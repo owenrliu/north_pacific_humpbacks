@@ -50,6 +50,7 @@ b2f2_surv_all %>%
   geom_line(linewidth=1.25)+
   geom_hline(yintercept=0.96,linetype=2)+
   geom_vline(xintercept=2015,linetype=2)+
+  geom_vline(xintercept=2005,linetype=2)+
   theme_classic()+
   facet_wrap(~feed)
 
@@ -84,3 +85,4 @@ mixing <- mixing %>% mutate(from=c("Asia","Hawaii","MX_AR","MX_ML","CenAm")) %>%
 
 library(circlize)
 chordDiagram(mixing)
+

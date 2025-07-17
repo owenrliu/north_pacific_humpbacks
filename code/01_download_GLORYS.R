@@ -33,7 +33,7 @@ zones_360 <- zones %>% st_shift_longitude() %>% unite("zoneID",Name,id)
 zones_360_bbs <- map(zones_360$geometry,st_bbox) %>% set_names(zones_360$zoneID)
 
 # quick plot
-zones_360 %>% ggplot()+geom_sf(fill='lightblue')+theme_minimal()+geom_sf_text(aes(label=Name))
+zones_360 %>% ggplot()+geom_sf(fill='lightblue')+theme_minimal()+geom_sf_text(aes(label=zoneID))
 
 ## DOWNLOAD PHYSICS DATA FROM GLORYS HINDCAST
 # 1993 to 06/2021: cmems_mod_glo_phy_my_0.083deg_P1M-M
@@ -48,11 +48,36 @@ zones_360 %>% ggplot()+geom_sf(fill='lightblue')+theme_minimal()+geom_sf_text(ae
 
 
 if(!dir.exists(here('data','glorys','phys','raw'))) {dir.create(here('data','glorys','phys','raw'),recursive = T)}
+if(!dir.exists(here('data','glorys','bgc','raw'))) {dir.create(here('data','glorys','bgc','raw'),recursive = T)}
 
-#quick function to download mixed layer depth and temperature for the surface layer
-# for a given bounding box and year
-dl_glorys_yr <- function(year,zoneID){
-  
+# static dataset with bathymetry
+dat_static <- cm$subset(
+  dataset_id="cmems_mod_glo_phy_my_0.083deg_static",
+  minimum_longitude=118,
+  maximum_longitude=281,
+  minimum_latitude=5,
+  maximum_latitude=72,
+  output_filename = paste0("data/glorys/phys/raw/glorys_physics_statics.nc")
+)
+
+# for the 0.25deg biogeochemistry
+dat_static_bgc <- cm$subset(
+  dataset_id="cmems_mod_glo_bgc_my_0.25deg_static",
+  dataset_part="mask",
+  minimum_longitude=118,
+  maximum_longitude=281,
+  minimum_latitude=5,
+  maximum_latitude=72,
+  output_filename = paste0("data/glorys/bgc/raw/glorys_bgc_statics.nc")
+)
+
+# a version to download all years for a chosen whale zone
+# can choose physics or bgc, which will point to different GLORYS/CMEMS datasets
+
+dl_glorys_zone_allyrs <- function(zoneID,
+                                  which_model= "physics", # physics or bgc are the options
+                                  vars){
+  # find the spatial bounding box
   bbox <- zones_360_bbs %>% pluck(zoneID)
   
   minlon <- bbox$xmin
@@ -60,102 +85,155 @@ dl_glorys_yr <- function(year,zoneID){
   minlat <- bbox$ymin
   maxlat <- bbox$ymax
   
-  tic(paste("Downloading GLORYS: ",year," ",zoneID))
-  dat <- cm$subset(
-    dataset_id="cmems_mod_glo_phy_my_0.083deg_P1M-m",
-    variables=list("mlotst","thetao"), #mld and sst
-    minimum_longitude=minlon,
-    maximum_longitude=maxlon,
-    minimum_latitude=minlat,
-    maximum_latitude=maxlat,
-    start_datetime=paste0(year,"-01-01T00:00:00"),
-    end_datetime=paste0(year,"-12-31T23:59:00"),
-    minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
-    maximum_depth=0.49402499198913574,
-    output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_",year,".nc")
-  )
-  toc()
-}
-
-# a version to download all years
-# for the version up to 2021:
-dl_glorys_1993_2021_allyrs <- function(zoneID){
+  # find and download the right dataset
+  if(which_model=="physics"){
+    
+    tic(paste("Downloading GLORYS Physics:",zoneID))
+    # for the physics hindcast, it is split into two different datasets,
+    # with the breakpoint between June and July, 2021
+      dat1 <- cm$subset(
+        dataset_id="cmems_mod_glo_phy_my_0.083deg_P1M-m",
+        variables=as.list(vars),
+        minimum_longitude=minlon,
+        maximum_longitude=maxlon,
+        minimum_latitude=minlat,
+        maximum_latitude=maxlat,
+        start_datetime=paste0(1993,"-01-01T00:00:00"),
+        end_datetime=paste0(2021,"-06-01T00:00:00"),
+        minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
+        maximum_depth=0.49402499198913574,
+        output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_1993-2021.nc")
+      )
+      dat2 <- cm$subset(
+        dataset_id="cmems_mod_glo_phy_myint_0.083deg_P1M-m",
+        variables=as.list(vars),
+        minimum_longitude=minlon,
+        maximum_longitude=maxlon,
+        minimum_latitude=minlat,
+        maximum_latitude=maxlat,
+        start_datetime=paste0(2021,"-07-01T00:00:00"),
+        end_datetime=paste0(2024,"-12-01T00:00:00"),
+        minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
+        maximum_depth=0.49402499198913574,
+        output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_2021-2024.nc")
+      )
+      toc()
+    }
   
-  bbox <- zones_360_bbs %>% pluck(zoneID)
-  
-  minlon <- bbox$xmin
-  maxlon <- bbox$xmax
-  minlat <- bbox$ymin
-  maxlat <- bbox$ymax
-  
-  tic(paste("Downloading GLORYS: ",zoneID))
-  dat <- cm$subset(
-    dataset_id="cmems_mod_glo_phy_my_0.083deg_P1M-m",
-    variables=list("mlotst","thetao"),
-    minimum_longitude=minlon,
-    maximum_longitude=maxlon,
-    minimum_latitude=minlat,
-    maximum_latitude=maxlat,
-    start_datetime=paste0(1993,"-01-01T00:00:00"),
-    end_datetime=paste0(2021,"-12-31T23:59:00"),
-    minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
-    maximum_depth=0.49402499198913574,
-    output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_1993-2021.nc")
-  )
-  toc()
-}
-
-# for 2021-2024
-dl_glorys_2021_2024_allyrs <- function(zoneID){
-  
-  bbox <- zones_360_bbs %>% pluck(zoneID)
-  
-  minlon <- bbox$xmin
-  maxlon <- bbox$xmax
-  minlat <- bbox$ymin
-  maxlat <- bbox$ymax
-  
-  tic(paste("Downloading GLORYS: ",zoneID))
-  dat <- cm$subset(
-    dataset_id="cmems_mod_glo_phy_myint_0.083deg_P1M-m",
-    variables=list("mlotst","thetao"),
-    minimum_longitude=minlon,
-    maximum_longitude=maxlon,
-    minimum_latitude=minlat,
-    maximum_latitude=maxlat,
-    start_datetime=paste0(2021,"-07-01T00:00:00"),
-    end_datetime=paste0(2024,"-12-31T23:59:00"),
-    minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
-    maximum_depth=0.49402499198913574,
-    output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_2021-2024.nc")
-  )
-  toc()
+  # the biogeochemistry is also in two different datasets,
+  # but the split is between December 2022 and Jan 2023
+  if(which_model=="bgc"){
+    
+    tic(paste("Downloading GLORYS BGC:",zoneID))
+    dat1 <- cm$subset(
+      dataset_id="cmems_mod_glo_bgc_my_0.25deg_P1M-m",
+      variables=as.list(vars),
+      minimum_longitude=minlon,
+      maximum_longitude=maxlon,
+      minimum_latitude=minlat,
+      maximum_latitude=maxlat,
+      start_datetime=paste0(1993,"-01-01T00:00:00"),
+      end_datetime=paste0(2022,"-12-01T00:00:00"),
+      minimum_depth=0.51, # this is the shallowest GLORYS level (i.e., the surface)
+      maximum_depth=0.51,
+      output_filename = paste0("data/glorys/bgc/raw/glorys_bgc_",zoneID,"_1993-2022.nc")
+    )
+    dat2 <- cm$subset(
+      dataset_id="cmems_mod_glo_bgc_myint_0.25deg_P1M-m",
+      variables=as.list(vars),
+      minimum_longitude=minlon,
+      maximum_longitude=maxlon,
+      minimum_latitude=minlat,
+      maximum_latitude=maxlat,
+      start_datetime=paste0(2023,"-01-01T00:00:00"),
+      end_datetime=paste0(2024,"-12-01T00:00:00"),
+      minimum_depth=0.51, # this is the shallowest GLORYS level (i.e., the surface)
+      maximum_depth=0.51,
+      output_filename = paste0("data/glorys/bgc/raw/glorys_bgc_",zoneID,"_2023-2024.nc")
+    )
+    toc()
+    
+  }
 }
 
 # test
-dl_glorys_yr(year=1993,zoneID="EAL+BER_16")
-xsst <- tidync(here('data','glorys','phys','raw','glorys_physics_EAL+BER_16_1993.nc')) %>% hyper_tibble() %>% 
-  mutate(across(longitude:latitude,as.numeric)) %>% 
-  mutate(time=as_date(time))
-xmld <- tidync(here('data','glorys','phys','raw','glorys_physics_EAL+BER_16_1993.nc')) %>% 
-  activate("mlotst") %>% 
-  hyper_tibble() %>% 
-  mutate(across(longitude:latitude,as.numeric)) %>% 
-  mutate(time=as_date(time))
-xsst %>% filter(time=="1993-01-01") %>% ggplot(aes(longitude,latitude,color=thetao))+geom_point()+scale_color_viridis(option='turbo')
-xmld %>% filter(time=="1993-01-01") %>% ggplot(aes(longitude,latitude,color=mlotst))+geom_point()+scale_color_viridis(option='turbo')
+dl_glorys_zone_allyrs(zoneID="Hawaii_3",which_model='bgc',vars=c("chl","no3","nppv"))
+
+xbgc <- tidync(here('data','glorys','bgc','raw','glorys_bgc_Hawaii_3_1993-2022.nc')) %>% hyper_tibble() %>%
+  mutate(across(longitude:latitude,as.numeric)) %>%
+  mutate(time=as_date(time))%>% 
+  pivot_longer(chl:nppv,names_to = "variable",values_to = "value")
+
+# chl
+chl_p <- xbgc %>%
+  filter(time=="2016-08-01",variable=="chl") %>% 
+  ggplot(aes(longitude,latitude,color=value))+
+  geom_point(shape=15)+
+  scale_color_viridis()+
+  coord_equal()
+# no3
+no3_p <-xbgc %>%
+  filter(time=="2016-08-01",variable=="no3") %>% 
+  ggplot(aes(longitude,latitude,color=value))+
+  geom_point(shape=15)+
+  scale_color_viridis()+
+  coord_equal()
+# nppv
+nppv_p <-xbgc %>%
+  filter(time=="2016-08-01",variable=="nppv") %>% 
+  ggplot(aes(longitude,latitude,color=value))+
+  geom_point(shape=15)+
+  scale_color_viridis()+
+  coord_equal()
+cowplot::plot_grid(chl_p,no3_p,nppv_p,nrow=1)
 
 # try downloading everything by zone
-# for 1993:2021
-walk(zones_360$zoneID,\(z) dl_glorys_1993_2021_allyrs(z))
+# for biogeochemisty
+walk(zones_360$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="bgc",vars=c("chl","no3","nppv")))
 # this took about ~30 minutes
 
-# for 2021:2024
-walk(zones_360$zoneID,\(z) dl_glorys_2021_2024_allyrs(z))
+# for physics
+# for biogeochemisty
+walk(zones_360$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="physics",vars=c("thetao","mlotst")))
+
 
 ### END
 
 ### OLDER 
+#quick function to download mixed layer depth and temperature for the surface layer
+# for a given bounding box and year
+# dl_glorys_yr <- function(year,zoneID,
+#                          datID="cmems_mod_glo_phy_my_0.083deg_P1M-m",
+#                          # dataset id. monthly physics: cmems_mod_glo_phy_my_0.083deg_P1M-m
+#                          vars){
+#   
+#   bbox <- zones_360_bbs %>% pluck(zoneID)
+#   
+#   minlon <- bbox$xmin
+#   maxlon <- bbox$xmax
+#   minlat <- bbox$ymin
+#   maxlat <- bbox$ymax
+#   
+#   # determine output file name/path
+#   cmems_mod_glo_phy_my_0.083deg_P1M-m
+#   
+#   tic(paste("Downloading GLORYS: ",year," ",zoneID))
+#   dat <- cm$subset(
+#     dataset_id=datID,
+#     variables=as.list(vars), #mld and sst
+#     minimum_longitude=minlon,
+#     maximum_longitude=maxlon,
+#     minimum_latitude=minlat,
+#     maximum_latitude=maxlat,
+#     start_datetime=paste0(year,"-01-01T00:00:00"),
+#     end_datetime=paste0(year,"-12-31T23:59:00"),
+#     minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
+#     maximum_depth=0.49402499198913574,
+#     output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_",year,".nc")
+#   )
+#   toc()
+# }
+
 # for(i in startyr:2021){
 #   tic(paste("Downloading GLORYS: ",i))
 #   dat <- cm$subset(
@@ -195,6 +273,34 @@ walk(zones_360$zoneID,\(z) dl_glorys_2021_2024_allyrs(z))
 #   )
 #   toc()
 # }
+
+# for 2021-2024
+# dl_glorys_2021_2024_allyrs <- function(zoneID){
+#   
+#   bbox <- zones_360_bbs %>% pluck(zoneID)
+#   
+#   minlon <- bbox$xmin
+#   maxlon <- bbox$xmax
+#   minlat <- bbox$ymin
+#   maxlat <- bbox$ymax
+#   
+#   tic(paste("Downloading GLORYS: ",zoneID))
+#   dat <- cm$subset(
+#     dataset_id="cmems_mod_glo_phy_myint_0.083deg_P1M-m",
+#     variables=list("mlotst","thetao"),
+#     minimum_longitude=minlon,
+#     maximum_longitude=maxlon,
+#     minimum_latitude=minlat,
+#     maximum_latitude=maxlat,
+#     start_datetime=paste0(2021,"-07-01T00:00:00"),
+#     end_datetime=paste0(2024,"-12-31T23:59:00"),
+#     minimum_depth=0.49402499198913574, # this is the shallowest GLORYS level (i.e., the surface)
+#     maximum_depth=0.49402499198913574,
+#     output_filename = paste0("data/glorys/phys/raw/glorys_physics_",zoneID,"_2021-2024.nc")
+#   )
+#   toc()
+# }
+
 # 
 # ## DOWNLOAD BIO-GEO-CHEMICAL DATA FROM GLORYS HINDCAST
 # # for BGC data, different resolution and different datasets

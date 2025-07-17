@@ -1,0 +1,187 @@
+---
+title: "Setup Spatial Zones"
+format: html
+editor: source
+---
+
+## Purpose
+
+Using various pieces of spatial data, use spatial analysis to define the domains for calculating environmental covariates for the North Pacific humpback whale assessment model. Basically, we want to use the shapefile of the feeding and breeding grounds and the subsetted output from the GLORYS global ocean model to create polygons of reasonable areas over which to calculate environmental metrics such as sea surface temperature, sea surface height, etc.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r setup, include=F}
+library(ncdf4) 
+library(tidync)
+library(tidyverse)
+library(here)
+library(geosphere)
+library(sf)
+library(terra)
+library(viridis)
+library(rnaturalearth)
+library(tictoc) # for timing code
+sf_use_s2(FALSE)
+
+theme_set(theme_classic())
+```
+
+## Import Data
+
+Breeding and feeding grounds shapefile, in native coords and shifted to 0-360 longitude to avoid the wraparound issue
+
+```{r}
+zones <- read_sf(here('data','spatial','NPhuwhRegions.1Apr2024.shp'))
+zones_bbs <- map(zones$geometry,st_bbox)
+zones_360 <- zones %>% st_shift_longitude() %>% unite("zoneID",Name,id)
+zones_360_bbs <- map(zones_360$geometry,st_bbox) %>% set_names(zones_360$zoneID)
+
+ggplot(zones)+geom_sf()+labs(title="Zones (non-shifted)")
+ggplot(zones_360)+geom_sf()+labs(title="Zones (shifted)")
+```
+
+GLORYS static bathymetry (from cmems_mod_glo_phy_my_0.083deg_static and similar for bgc)
+
+```{r}
+bathyphys <- tidync(here('data','glorys','phys','raw','glorys_physics_statics.nc'))
+bathybgc <- tidync(here('data','glorys','bgc','raw','glorys_bgc_statics.nc'))
+```
+
+The physics dataset has a bottom depth (`deptho` and the level of that depth `deptho_lev`) in the GLORYS model, indicating the assumed bottom depth of each grid cell.
+
+```{r}
+bathyphys_df <- bathyphys %>% activate("D2,D1") %>% hyper_tibble() %>% 
+  mutate(across(longitude:latitude,as.numeric))
+bathybgc_df <- bathybgc %>% activate("D2,D1") %>% hyper_tibble() %>% 
+  mutate(across(longitude:latitude,as.numeric))
+```
+
+Spatial version, using `sf`.
+
+```{r}
+# make into spatial objects
+bathyphys_sf <- bathyphys_df %>% st_as_sf(coords=c('longitude','latitude'),crs=4326)
+bathybgc_sf <- bathybgc_df %>% st_as_sf(coords=c('longitude','latitude'),crs=4326)
+```
+
+Now, visualize in raster form using `terra`.
+
+```{r}
+# template rasters
+phys_r <- vect(bathyphys_sf) %>% rast(resolution=0.083) # resolution of the original model
+bgc_r <- vect(bathybgc_sf) %>% rast(resolution=0.25) # resolution of the original model
+
+# rasterize points
+bathyphys_r <- rasterize(vect(bathyphys_sf),phys_r,fun=mean,field="deptho")
+bathybgc_r <- rasterize(vect(bathybgc_sf),bgc_r,fun=mean,field="deptho")
+
+# plot
+plot(bathyphys_r,range=c(NA,5000),main="Depth in GLORYS Physics")
+plot(bathybgc_r,range=c(NA,5000),main="Depth in GLORYS BGC")
+```
+
+What are the bottom depths and matched model levels represented here? This shows sort of the layer thickness between the depths in the models.
+
+```{r}
+# all cells <1000m bottom depth
+bathyphys_df %>% filter(deptho<1000) %>% ggplot(aes(factor(deptho_lev),deptho))+geom_point()+ggtitle("GLORYS Levels vs. Grid Cell Depth (Physics)")
+bathybgc_df %>% filter(deptho<1000) %>% ggplot(aes(factor(deptho_lev),deptho))+geom_point()+ggtitle("GLORYS Levels vs. Grid Cell Depth (BGC)")
+```
+
+## Filter and Crop
+
+We can combine these ingredients (zones and bathymetry) to refine the zones over which we will (later) calculate environmental covariates from the GLORYS model. We will double filter the bathymetry datasets to 1) areas less than or equal to ~1000m bottom depth, and 2) areas within humpback zones.
+
+```{r}
+# put the zones polygons into a format terra likes
+zones_vect <- vect(zones_360)
+
+# use terra to set all values greater than 1000m to NA
+# then, mask out any remaining cells that are not contained within the zones
+mask100_phys <- bathyphys_r %>% 
+  #mask depth
+  classify(matrix(c(1000,1e6,NA),nrow=1),right=FALSE) %>% 
+  #mask zones
+  mask(zones_vect)
+
+mask100_bgc <- bathybgc_r %>% 
+  classify(matrix(c(1000,1e6,NA),nrow=1),right=FALSE) %>% 
+  mask(zones_vect)
+
+plot(mask100_phys)
+plot(mask100_bgc)
+
+# looks about right
+```
+
+This should be enough to now filter our extractions from GLORYS:
+
+```{r}
+# raster version
+walk(zones_vect$zoneID,\(z){
+  d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
+  d2 <- mask100_phys %>% crop(d1)
+  plot(d2)
+})
+
+walk(zones_vect$zoneID,\(z){
+  d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
+  d2 <- mask100_bgc %>% crop(d1)
+  plot(d2)
+})
+```
+
+## Save
+
+```{r}
+writeRaster(mask100_bgc,here('data','spatial','GLORYS_bgc_1000m_mask.tif'))
+writeRaster(mask100_phys,here('data','spatial','GLORYS_phys_1000m_mask.tif'))
+```
+
+
+## OLD
+
+old vector version
+
+```{r}
+# filter to <1000m or less
+bathy_sf_crop1 <- bathy_sf %>% filter(deptho_lev<=35)
+ggplot(bathy_sf_crop1)+geom_sf(aes(color=deptho))+scale_color_viridis()+ggtitle("GLORYS Bathymetry, Crop 1")
+
+# and with the polygons overlaid
+ggplot()+
+  geom_sf(data=bathy_sf_crop1,aes(color=deptho))+
+  geom_sf(data=zones_360,fill=NA)+
+  scale_color_viridis()+ggtitle("GLORYS Bathymetry, Crop 1")
+
+# filter 2- cells within zones
+bathy_sf_crop2 <- bathy_sf_crop1 %>% 
+  # spatial left join to zones
+  st_join(zones_360) %>% 
+  # filter out NA zones
+  filter(!is.na(zoneID)) %>% 
+  mutate(include=1)
+ggplot()+
+  geom_sf(data=bathy_sf_crop2,aes(color=deptho))+
+  geom_sf(data=zones_360,fill=NA)+
+  scale_color_viridis()+ggtitle("GLORYS Bathymetry, Crop 2")
+```
+```{r}
+map(unique(bathy_sf_crop2$zoneID),\(z){
+  d1 <- bathy_sf_crop2 %>% filter(zoneID==z)
+  d2 <- zones_360 %>% filter(zoneID==z)
+  p<- ggplot()+
+    geom_sf(data=d1,aes(color=deptho),size=1.5)+
+    geom_sf(data=d2,fill=NA)+
+    scale_color_viridis()+ggtitle(paste("GLORYS cells to include",z))
+  p
+})
+
+```
+
+```{r}
+write_rds(bathy_sf_crop2,here('data','glorys','phys','glorys_bathy_crop_whalezones_300m.rds'))
+```
+
