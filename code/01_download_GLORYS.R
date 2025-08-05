@@ -2,6 +2,9 @@
 # from https://github.com/pepijn-devries/CopernicusMarine/issues/42#issuecomment-2080179599
 library(tidyverse)
 library(sf)
+library(terra)
+library(tidyterra)
+library(viridis)
 library(here)
 library(reticulate)
 library(tidync)
@@ -24,16 +27,23 @@ cm <- (import("copernicusmarine"))
 # copernicusmarine subset -i cmems_mod_glo_phy_my_0.083deg_P1M-m -x -126 -X -115 -y 32 -Y 50 -z 120. -Z 150. -v thetao -t 1994-01-01 -T 2024-08-20 -o ./copernicus-data -f glorys_data_for_hake_temperature.nc
 # copernicusmarine subset -i cmems_mod_glo_phy_myint_0.083deg_P1M-m -x -126 -X -115 -y 32 -Y 50 -z 120. -Z 150. -v thetao -t 1994-01-01 -T 2024-08-20 -o ./copernicus-data -f glorys_data_for_hake_temperature2.nc
 
-# bounding boxes for humpback areas
-zones <- read_sf(here('data','spatial','NPhuwhRegions.1Apr2024.shp'))
-zones_bbs <- map(zones$geometry,st_bbox)
+# bounding boxes for humpback areas, updated with assessment scenarios
+zones <- read_sf(here('data','spatial','NPhump_zones_scenarios.shp'))
+zones_bbs <- map(zones$geometry,st_bbox) %>% 
+  set_names(zones$zoneID)
 
-# need to shift the longitude so it doesn't plot backwards across the intl dateline (i.e. move to the 0-360 longitude instead of -180-180)
-zones_360 <- zones %>% st_shift_longitude() %>% unite("zoneID",Name,id)
-zones_360_bbs <- map(zones_360$geometry,st_bbox) %>% set_names(zones_360$zoneID)
+# quick plot (B2F2 scenario)
+zones %>%
+  filter(B2|F2) %>% 
+  ggplot()+
+  geom_sf(aes(fill=factor(Feeding)))+
+  labs(fill="Feeding\nGround")+
+  theme_classic()+
+  geom_sf_text(aes(label=Name))
 
-# quick plot
-zones_360 %>% ggplot()+geom_sf(fill='lightblue')+theme_minimal()+geom_sf_text(aes(label=zoneID))
+# feeding zones only, because we are only going to download data for feeding grounds for now
+feeding_zones <- zones %>% 
+  filter(Feeding)
 
 ## DOWNLOAD PHYSICS DATA FROM GLORYS HINDCAST
 # 1993 to 06/2021: cmems_mod_glo_phy_my_0.083deg_P1M-M
@@ -78,7 +88,7 @@ dl_glorys_zone_allyrs <- function(zoneID,
                                   which_model= "physics", # physics or bgc are the options
                                   vars){
   # find the spatial bounding box
-  bbox <- zones_360_bbs %>% pluck(zoneID)
+  bbox <- zones_bbs %>% pluck(zoneID)
   
   minlon <- bbox$xmin
   maxlon <- bbox$xmax
@@ -159,43 +169,34 @@ dl_glorys_zone_allyrs <- function(zoneID,
 # test
 dl_glorys_zone_allyrs(zoneID="Hawaii_3",which_model='bgc',vars=c("chl","no3","nppv"))
 
-xbgc <- tidync(here('data','glorys','bgc','raw','glorys_bgc_Hawaii_3_1993-2022.nc')) %>% hyper_tibble() %>%
-  mutate(across(longitude:latitude,as.numeric)) %>%
-  mutate(time=as_date(time))%>% 
-  pivot_longer(chl:nppv,names_to = "variable",values_to = "value")
+xbgcfn <- here('data','glorys','bgc','raw','glorys_bgc_Hawaii_3_1993-2022.nc')
+# random year/month to plot
+xym <- as.Date("2016-08-01")
 
 # chl
-chl_p <- xbgc %>%
-  filter(time=="2016-08-01",variable=="chl") %>% 
-  ggplot(aes(longitude,latitude,color=value))+
-  geom_point(shape=15)+
-  scale_color_viridis()+
-  coord_equal()
+xchl <- rast(xbgcfn,subds="chl")
+xchl <- xchl[[time(xchl)==xym]]
+chl_p <- ggplot()+geom_spatraster(data=xchl)+scale_fill_viridis()
+
 # no3
-no3_p <-xbgc %>%
-  filter(time=="2016-08-01",variable=="no3") %>% 
-  ggplot(aes(longitude,latitude,color=value))+
-  geom_point(shape=15)+
-  scale_color_viridis()+
-  coord_equal()
+xno3 <- rast(xbgcfn,subds="no3")
+xno3 <- xno3[[time(xno3)==xym]]
+no3_p <- ggplot()+geom_spatraster(data=xno3)+scale_fill_viridis()
+
 # nppv
-nppv_p <-xbgc %>%
-  filter(time=="2016-08-01",variable=="nppv") %>% 
-  ggplot(aes(longitude,latitude,color=value))+
-  geom_point(shape=15)+
-  scale_color_viridis()+
-  coord_equal()
+xnppv <- rast(xbgcfn,subds="nppv")
+xnppv <- xnppv[[time(xnppv)==xym]]
+nppv_p <- ggplot()+geom_spatraster(data=xnppv)+scale_fill_viridis()
+
 cowplot::plot_grid(chl_p,no3_p,nppv_p,nrow=1)
 
 # try downloading everything by zone
 # for biogeochemisty
-walk(zones_360$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="bgc",vars=c("chl","no3","nppv")))
+walk(zones$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="bgc",vars=c("chl","no3","nppv")))
 # this took about ~30 minutes
 
 # for physics
-# for biogeochemisty
-walk(zones_360$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="physics",vars=c("thetao","mlotst")))
-
+walk(feeding_zones$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="physics",vars=c("thetao","mlotst")))
 
 ### END
 
@@ -207,7 +208,7 @@ walk(zones_360$zoneID,\(z) dl_glorys_zone_allyrs(zoneID=z,which_model="physics",
 #                          # dataset id. monthly physics: cmems_mod_glo_phy_my_0.083deg_P1M-m
 #                          vars){
 #   
-#   bbox <- zones_360_bbs %>% pluck(zoneID)
+#   bbox <- zones_bbs %>% pluck(zoneID)
 #   
 #   minlon <- bbox$xmin
 #   maxlon <- bbox$xmax

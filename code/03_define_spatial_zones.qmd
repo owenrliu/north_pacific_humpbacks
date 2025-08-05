@@ -1,0 +1,106 @@
+---
+title: "Setup Spatial Zones"
+format: html
+toc: true
+toc_float: true
+toc-title: "Navigation"
+embed-resources: true
+editor: source
+---
+
+## Purpose
+
+Using various pieces of spatial data, use spatial analysis to define the domains for calculating environmental covariates for the North Pacific humpback whale assessment model. Basically, we want to use the shapefile of the feeding and breeding grounds and the subsetted output from the [GLORYS global ocean model](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description) to create polygons of reasonable areas over which to calculate environmental metrics such as sea surface temperature, sea surface height, etc.
+
+We make two versions of the domains, corresponding to two separate ocean model grids--a 0.083 degree grid for physical variables, and a 0.25 degree grid for the biogeochemical model (for variables such as chlorophyll and nitrate).
+
+```{r setup, include=F}
+library(ncdf4) 
+library(tidync)
+library(tidyverse)
+library(here)
+library(geosphere)
+library(sf)
+library(terra)
+library(viridis)
+library(rnaturalearth)
+library(tictoc) # for timing code
+sf_use_s2(FALSE)
+
+theme_set(theme_classic())
+```
+
+## Import Data
+
+Humpback whale breeding and feeding grounds shapefile, in native coordinates and shifted to 0-360 longitude to avoid the wraparound issue with the international dateline.
+
+```{r}
+zones <- read_sf(here('data','spatial','NPhump_zones_scenarios.shp'))
+zones_bbs <- map(zones$geometry,st_bbox)
+  
+zones %>% 
+  filter(B1|F1) %>% 
+  ggplot()+
+  geom_sf(aes(fill=factor(Feeding)))+
+  labs(fill="Feeding\nGround")+
+  theme_classic()+
+  geom_sf_text(aes(label=Name))
+```
+
+GLORYS static bathymetry (from cmems_mod_glo_phy_my_0.083deg_static and similar for biogeochemistry)
+
+```{r}
+bathyphys <- rast(here('data','glorys','phys','raw','glorys_physics_statics.nc'),subds="deptho")
+bathybgc <- rast(here('data','glorys','bgc','raw','glorys_bgc_statics.nc'),subds='deptho')
+
+# plot
+plot(bathyphys,range=c(NA,5000),main="Depth in GLORYS Physics")
+plot(bathybgc,range=c(NA,5000),main="Depth in GLORYS BGC")
+```
+
+## Filter and Crop
+
+We can combine these ingredients (zones and bathymetry) to refine the zones over which we will (later) calculate environmental covariates from the GLORYS model. We will double filter the bathymetry datasets to 1) areas less than or equal to ~1000m bottom depth, and 2) areas within humpback feeding zones.
+
+```{r}
+# put the zones polygons into a format terra likes
+zones_vect <- vect(zones)
+
+# use terra to set all values greater than 1000m to NA
+# then, mask out any remaining cells that are not contained within the zones
+mask1k_phys <- bathyphys %>% 
+  #mask depth
+  classify(matrix(c(1000,1e6,NA),nrow=1),right=FALSE) %>% 
+  #mask zones
+  mask(zones_vect)
+
+mask1k_bgc <- bathybgc %>% 
+  classify(matrix(c(1000,1e6,NA),nrow=1),right=FALSE) %>% 
+  mask(zones_vect)
+
+plot(mask1k_phys)
+plot(mask1k_bgc)
+```
+
+This should be enough to now filter our extractions from GLORYS. Here's what they look like:
+
+```{r}
+walk(zones_vect$zoneID,\(z){
+  d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
+  d2 <- mask1k_phys %>% mask(d1) %>% crop(d1)
+  plot(d2,main=z)
+})
+
+walk(zones_vect$zoneID,\(z){
+  d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
+  d2 <- mask1k_bgc %>% mask(d1) %>% crop(d1)
+  plot(d2,main=z)
+})
+```
+
+## Save
+
+```{r}
+writeRaster(mask1k_bgc,here('data','spatial','GLORYS_bgc_1000m_mask.tif'),overwrite=T)
+writeRaster(mask1k_phys,here('data','spatial','GLORYS_phys_1000m_mask.tif'),overwrite=T)
+```
