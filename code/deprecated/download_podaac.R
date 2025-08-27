@@ -47,7 +47,9 @@ library(earthdatalogin)
 library(tidyverse)
 library(here)
 
-# edl_netrc(netrc_path = "C:/Users/owenrliu/_netrc") # credentials
+edl_netrc(netrc_path = "C:/Users/owenrliu/_netrc",
+          username = "XXXXX",
+          password="XXXXX") # fill credentials
 
 stac_source <- rstac::stac(
   "https://cmr.earthdata.nasa.gov/stac/POCLOUD/"
@@ -101,7 +103,9 @@ find_urls <- function(item_collection){
 }
 
 tu <- find_urls(t)
-tr <- terra::rast(tu[1]) #doesn't work
+ncdf4::nc_open(tu[1])
+
+tr <- terra::rast(tu[1],vsi=T) #doesn't work
 download.file(tu[1],destfile=here::here('data','podaac','test1.nc'))
 # tr <- terra::rast(here::here('data','podaac','test.nc'))
 terra::plot(tr,1)
@@ -149,5 +153,84 @@ stac_query <- rstac::stac_search(
 )
 
 executed_stac_query <- rstac::get_request(stac_query)
-
 executed_stac_query
+
+rstac::assets_download(executed_stac_query, "lcpri", output_dir = tempdir())
+
+output_file <-file.path(
+  tempdir(),
+  "lcmap",
+  "CU",
+  "V13",
+  "025011",
+  "2021",
+  "LCMAP_CU_025011_2021_20220721_V13_CCDC",
+  "LCMAP_CU_025011_2021_20220629_V13_LCPRI.tif"
+) |>
+  terra::rast()
+
+### try again
+library(terra)
+s_obj <- stac("https://planetarycomputer.microsoft.com/api/stac/v1/")
+it_obj <- s_obj %>%
+  stac_search(collections = "landsat-c2-l2",
+              bbox = c(-47.02148, -17.35063, -42.53906, -12.98314)) %>%
+  get_request()
+
+print(it_obj)
+it_obj <- s_obj %>%
+  stac_search(collections = "landsat-c2-l2",
+              bbox = c(-47.02148, -17.35063, -42.53906, -12.98314)) %>%
+  get_request() %>%
+  items_sign(sign_fn = sign_planetary_computer())
+url <- paste0("/vsicurl/", it_obj$features[[1]]$assets$blue$href)
+
+data <- rast(url)
+plot(data)
+
+# try to get SST from planetary computer
+# https://planetarycomputer.microsoft.com/dataset/noaa-cdr-sea-surface-temperature-whoi#Example-Notebook
+
+s_obj <- stac("https://planetarycomputer.microsoft.com/api/stac/v1/")
+it_obj <- s_obj %>%
+  stac_search(collections = "noaa-cdr-sea-surface-temperature-whoi",
+              datetime="1988-01-01T22:00:00Z") %>%
+  get_request()%>%
+  items_sign(sign_fn = sign_planetary_computer())
+
+print(it_obj)
+
+url <- paste0("/vsicurl/", it_obj$features[[1]]$assets$sea_surface_temperature$href)
+
+data <- rast(url) # wow this worked
+plot(data)
+
+
+### EXAMPLE cmd line
+## AFTER edl_netrc is run
+y <- 2002
+m <- 9
+startdate <- ym(paste(y,m,sep="-")) |> paste0("T00:00:00Z")
+enddate <- as_date(startdate)+months(1)
+enddate <- enddate |> paste0("T00:00:00Z")
+
+s <- paste("podaac-data-downloader -c MUR25-JPL-L4-GLOB-v04.2 -d ./data/podaac/temp --start-date", startdate,"--end-date",enddate)
+system(s)
+
+
+
+minimum_longitude=118
+maximum_longitude=281
+minimum_latitude=5
+maximum_latitude=72
+
+npext <- ext(c(minimum_longitude,maximum_longitude,minimum_latitude,maximum_latitude))
+
+# crop extent and combine
+fls <- list.files(here('data','podaac','temp'),full.names = T) |> str_subset(".nc")
+outr <- map(fls,\(m){
+  rast(m,subds="analysed_sst") |> 
+    crop(npext)
+}) |> rast() |> 
+  mean()
+

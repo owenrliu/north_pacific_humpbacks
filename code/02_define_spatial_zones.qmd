@@ -10,7 +10,7 @@ editor: source
 
 ## Purpose
 
-Using various pieces of spatial data, use spatial analysis to define the domains for calculating environmental covariates for the North Pacific humpback whale assessment model. Basically, we want to use the shapefile of the feeding and breeding grounds and the subsetted output from the [GLORYS global ocean model](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description) to create polygons of reasonable areas over which to calculate environmental metrics such as sea surface temperature, sea surface height, etc.
+Using various pieces of spatial data, define the domains for calculating environmental covariates for each of the humpback whale feeding grounds in the North Pacific humpback whale assessment model. Basically, we want to use the shapefile of the feeding and breeding grounds and the subsetted output from the [GLORYS global ocean model](https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description) to create polygons of reasonable areas over which to calculate environmental metrics such as sea surface temperature, sea surface height, etc.
 
 We make two versions of the domains, corresponding to two separate ocean model grids--a 0.083 degree grid for physical variables, and a 0.25 degree grid for the biogeochemical model (for variables such as chlorophyll and nitrate).
 
@@ -66,6 +66,9 @@ We can combine these ingredients (zones and bathymetry) to refine the zones over
 # put the zones polygons into a format terra likes
 zones_vect <- vect(zones)
 
+# feeding zones only
+fzones <- zones_vect %>% tidyterra::filter(Feeding)
+
 # use terra to set all values greater than 1000m to NA
 # then, mask out any remaining cells that are not contained within the zones
 mask1k_phys <- bathyphys %>% 
@@ -85,13 +88,13 @@ plot(mask1k_bgc)
 This should be enough to now filter our extractions from GLORYS. Here's what they look like:
 
 ```{r}
-walk(zones_vect$zoneID,\(z){
+walk(fzones$zoneID,\(z){
   d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
   d2 <- mask1k_phys %>% mask(d1) %>% crop(d1)
   plot(d2,main=z)
 })
 
-walk(zones_vect$zoneID,\(z){
+walk(fzones$zoneID,\(z){
   d1 <- zones_vect %>% subset(zones_vect$zoneID==z)
   d2 <- mask1k_bgc %>% mask(d1) %>% crop(d1)
   plot(d2,main=z)

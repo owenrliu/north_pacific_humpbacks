@@ -10,9 +10,9 @@ editor: source
 
 ## Purpose
 
-Using the modeled data from GLORYS, build environmental covariates to test in the assessment model. This will take advantage of the steps we've already completed when we downloaded the ocean data (`01_download_GLORYS.R`), and defined the zones over which to calculate these metrics (`define spatial zones.qmd`)
+Using the modeled data from GLORYS, build environmental covariates to test in the assessment model. This will take advantage of the steps we've already completed when we downloaded the ocean data (`01_download_GLORYS.R`), and defined the zones over which to calculate these metrics (`02_define spatial zones.qmd`)
 
-```{r setup}
+```{r setup,warning=F,message=F}
 library(ncdf4) 
 library(tidync)
 library(sf)
@@ -46,7 +46,7 @@ zones %>%
 
 ## Extract and Mask
 
-To derive time series, we will use raster extractions from the GLORYS netCDFs. In a previous script, `define spatial zones.qmd`, we used spatial analyses to define a raster mask for "shelf habitat" for both the physics and biogeochemical model outputs from GLORYS, corresponding to GLORYS model grid cells that are 1) within the polygons mapped above, and 2) are less than 1000m deep. We will use these rasters to mask/crop the spatial data from the netCDFs, and then we can calculate summary statistics for particular months or years from those cropped rasters. Let's write some functions to help us do that.
+To derive time series, we will use raster extractions from the GLORYS netCDFs. In a previous script, `03_define spatial zones.qmd`, we defined a raster mask for "shelf habitat" for both the physics and biogeochemical model outputs from GLORYS, corresponding to GLORYS model grid cells that are 1) within the polygons mapped above, and 2) are less than 1000m deep. We will use these rasters to mask/crop the spatial data from the netCDFs, and then we can calculate summary statistics for particular months or years from those cropped rasters. Let's write some functions to help us do that.
 
 ### Raster masks
 
@@ -79,6 +79,7 @@ fls_tbl <- crossing(year=1993:2024,
     dataset=="bgc" & year %in% c(1993:2022) ~ paste0("data/glorys/bgc/raw/glorys_bgc_",zoneID,"_1993-2022.nc"),
     dataset=="bgc" & year %in% c(2023:2024) ~ paste0("data/glorys/bgc/raw/glorys_bgc_",zoneID,"_2023-2024.nc"),
   ))
+knitr::kable(head(fls_tbl))
 ```
 
 ### Extract function
@@ -181,7 +182,7 @@ ngoa_mean_sst <- calc_summary_r(v="thetao",year_start=1993,year_end=2013,month_s
 x1 <- ggplot()+
   geom_spatraster(data=ngoa_mean_sst)+
   geom_sf(data=zones %>% filter(Name=="NGOA"),fill=NA)+
-  labs(title="NGOA Mean August SST, 1993 to 2013")+
+  labs(title="NGOA Mean August SST\n1993 to 2013")+
   scale_fill_viridis(option='turbo',na.value=NA,limits=c(10,16))
 ```
 
@@ -194,7 +195,7 @@ ngoa_sst90 <- calc_summary_r(v="thetao",year_start=1993,year_end=2013,month_star
 x2 <- ggplot()+
   geom_spatraster(data=ngoa_sst90)+
   geom_sf(data=zones %>% filter(Name=="NGOA"),fill=NA)+
-  labs(title="NGOA 90th quantile August SST, 1993 to 2013")+
+  labs(title="NGOA 90th quantile August SST\n1993 to 2013")+
   scale_fill_viridis(option='turbo',na.value=NA,limits=c(10,16))
 ```
 

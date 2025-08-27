@@ -1,4 +1,5 @@
 ## Define all of the unique zones and combinations of zones in the 2024 NP Humpback Assessment scenarios (B1,B2,B3,B4)
+## Make shapefiles and convert from [-180,180] to [0,360] longitude
 
 library(tidyverse)
 library(sf)
