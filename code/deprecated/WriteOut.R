@@ -3,10 +3,10 @@
 WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,StockDef,data)
 {
   
-  # save rept as rds
+  # save rept as rds for easier access to plotting later
   readr::write_rds(rept,paste0("Diags/",Code,Abbrev,".rds"))
   
-  ###
+  ### Write out relevant information into a basic text file
   Nyear <- Yr2-Yr1+1
   
   Nbreed <- length(BreedNames)
@@ -18,8 +18,8 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   if (StockDef$StochSopt==1) write("Mortality impacts feeding grounds",FileName,append=T)
   if (StockDef$DensDepOpt==0) write("Recuitment related to unfished",FileName,append=T)
   if (StockDef$DensDepOpt==1) write("Recuitment related to unfished and current",FileName,append=T)
-  write(paste0("Staying rate: ",StockDef$StrayBase),FileName,append=T)
-  write(paste0("Age-at-matrity: ",StockDef$IAmat),FileName,append=T)
+  write(paste0("Straying rate: ",StockDef$StrayBase),FileName,append=T)
+  write(paste0("Age-at-maturity: ",StockDef$IAmat),FileName,append=T)
   write(paste0("Base adult survival: ",StockDef$TimeLag),FileName,append=T)
   if (StockDef$WithMirror) write("Mirrored survival",FileName,append=T)
   write(paste0("Sigma for survival devs: ",StockDef$SigmaDevS),FileName,append=T)

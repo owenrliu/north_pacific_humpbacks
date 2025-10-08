@@ -25,15 +25,10 @@ Prior_int <- Y2 - Prior_slope*K2
 Priors <- 1.0/(1+exp(Prior_int+Prior_slope*Ks))
 
 UseKPrior <- 1
-# ========================================================================================
+# ====================================================================================================================
+# FUNCTION THAT DEFINES THE MODEL
 f <- function(parms)
  {
-  sumSQ <- function(x){
-    TheMean <- sum(x)/length(x);
-    Output <- 0;
-    for (ii in 1:length(x)) Output <- Output + (x[ii]-TheMean)^2.0;
-    return(Output);
-  }
   # 
   getAll(data2, parms, warn=FALSE)                                  # Make the data and parameters global to this function
   Nyr <- Yr2-Yr1+1;                                                 # Number of years
@@ -516,7 +511,8 @@ f <- function(parms)
   Penal <- Penal2;
   for (Ibreed in 1:Nbreed) Penal <- Penal + 0.0001*logK[Ibreed]*logK[Ibreed];
   for (Imix in 1:MixPar) Penal <- Penal + MixPars[Imix]*MixPars[Imix];
-  Penal <- Penal + sumSQ(logBK)
+  logBK_sumSQ <- sum((logBK-mean(logBK))^2)
+  Penal <- Penal + logBK_sumSQ
   Penal <- Penal - sum(dnorm(SBdev,0.0,1.0,log=T));
   Penal <- Penal - sum(dnorm(FBdev,0.0,1.0,log=T));
   Penal <- Penal - sum(dnorm(SFdev,0.0,1.0,log=T));
@@ -594,6 +590,7 @@ f <- function(parms)
  }  
   
 # ====================================================================================================================
+# FUNCTION THAT ACTUALLY FITS THE MODEL
 
 DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
                   SF=c(0,1,0,1,1,1),SigmaDevS=6,SigmaDevF=0.01,WithMirror=1,Yr1=1970,Yr2=2023,
@@ -905,8 +902,10 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,T
                            BreedNames,FeedNames,Nboot=500,seed,BootUse,bestOrig=best)
 
   return(best)
- }
+}
+
 # ==========================================================================================
+# BOOTSTRAPPING FUNCTION
 
 Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,Nboot=2,seed=19101,BootUse,bestOrig)
 {
@@ -1033,7 +1032,7 @@ Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames
   
 }
 # ==========================================================================================
-
+# THIS IS WHERE ALL THE ACTION HAPPENS- ACTUALLY RUN THE MODEL
 # Select the case for the analysis
 Case <- 1
 

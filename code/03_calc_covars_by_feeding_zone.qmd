@@ -360,7 +360,6 @@ ngoa_sst_ts1_p
 ngoa_sst_ts2_p
 ```
 
-
 ```{r}
 ngoa_chl_ts <- calc_anom_ts(v="chl",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=9,z="NGOA_8",baseline_fun='mean')
 
@@ -410,5 +409,68 @@ all_chl_p <- chl_anoms %>%
   facet_wrap(~zoneID)+
   labs(title="chl summer anomaly, 1993 to 2013 baseline")
 all_chl_p
+```
+
+Mixed layer depth
+
+```{r}
+mld_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="mlotst",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+}) %>% bind_rows()
+
+all_mld_p <- mld_anoms %>% 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="MLD summer anomaly, 1993 to 2013 baseline")
+all_mld_p
+```
+
+Nitrate
+
+```{r}
+no3_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="no3",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+}) %>% bind_rows()
+
+all_no3_p <- no3_anoms %>% 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="no3 summer anomaly, 1993 to 2013 baseline")
+all_no3_p
+```
+
+Net primary production
+
+```{r}
+nppv_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="nppv",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+}) %>% bind_rows()
+
+all_nppv_p <- nppv_anoms %>% 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="nppv summer anomaly, 1993 to 2013 baseline")
+all_nppv_p
+```
+
+## Save
+
+Save these anomaly timeseries
+
+```{r}
+out <- list(sst=sst_anoms,chl=chl_anoms,mld=mld_anoms,no3=no3_anoms,nppv=nppv_anoms)
+write_rds(out,here('data','processed covariates','glorys_anomalies_by_zone.rds'))
 ```
 

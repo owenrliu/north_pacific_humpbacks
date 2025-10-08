@@ -86,3 +86,10 @@ mixing <- mixing %>% mutate(from=c("Asia","Hawaii","MX_AR","MX_ML","CenAm")) %>%
 library(circlize)
 chordDiagram(mixing)
 
+#######################
+Code="B1F1";SensCase="BC";StochSopt=1;StrayBase=0;IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
+SF=c(0,1,0,1,1,1);SigmaDevS=6;SigmaDevF=0.01;WithMirror=1;Yr1=1970;Yr2=2023;
+AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
+ByCatchFile="BycatchActual_2024_04_24.csv";
+WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
+BootUse;SetNew=0;Init=NULL

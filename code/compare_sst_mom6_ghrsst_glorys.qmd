@@ -1,0 +1,689 @@
+---
+title: "SST Validation and Comparison"
+format: html
+toc: true
+toc_float: true
+toc-title: "Navigation"
+embed-resources: true
+editor: source
+---
+
+```{r setup, include=F, warning=F, message=F}
+library(tidync)
+library(sf)
+library(terra)
+library(tidyverse)
+library(tidyterra)
+library(viridis)
+library(colorspace)
+library(here)
+library(tictoc)
+theme_set(theme_classic())
+knitr::opts_chunk$set(message=F,warning=F)
+```
+
+## Purpose
+
+We have developed environmental time series to test in the North Pacific humpback assessment model. To develop these time series, we used ocean model data from Copernicus Marine's GLORYS models to balance our needs for a consistent product that covers the entire North Pacific, but is sufficiently high resolution to be relevant within each humpback feeding ground. However, as with any modeled data, we want to validate it to the extent possible against other sources of data. Here, we do that by comparing GLORYS-derived SST to SST from two other sources. The first is the Naval Oceanographic Office Group for High Resolution Sea Surface Temperature (GHRSST), a high-resolution, global satellite-derived SST product. The second is another ocean model, MOM6, which covers the US West Coast, Gulf of Alaska, and Bering Sea, but not the rest of the northwest Pacific.
+
+## Import Data
+
+### Feeding Zones
+
+Zones in blue are areas for which we are interested in developing time series. Because the humpback assessment model uses multiple scenarios, there are some zones that are combinations of others. For example, the Western Gulf of Alaska is either its own zone (WGOA) or is included with the Eastern Aleutians and Bering Sea (EAL+BER+WGOA).
+
+```{r}
+zones <- read_sf(here('data','spatial','NPhump_zones_scenarios.shp'))
+zones_bbs <- map(zones$geometry,st_bbox)
+fzones <- zones %>% filter(Feeding) # feeding zones only
+
+# make a vect() version for terra package
+fzonesv <- vect(fzones)
+
+zones %>% 
+  ggplot()+
+  geom_sf(aes(fill=Feeding))+labs(fill="Feeding\nGround")
+```
+
+### Raster Mask
+
+This raster mask identifies areas on the continental shelf, or at least, areas with nominal bottom depths less than 1000m.
+
+```{r}
+mask1k_phys<- rast(here('data','spatial','GLORYS_phys_1000m_mask.tif'))
+plot(mask1k_phys,main="Physics 1000m mask")
+```
+
+Here's a basic map of each zone. The following analyses are performed on the scale of these zones.
+
+```{r,fig.width=8,fig.height=8,message=F,}
+zones_p <- map(fzones$Name,\(x){
+  v <- filter(fzones,Name==x)
+  b <- crop(mask1k_phys,v) |> mask(v)
+  p <- ggplot()+
+    geom_spatraster(data=b,aes(fill=deptho))+
+    geom_sf(data=v,fill=NA)+
+    scale_fill_viridis(option='turbo',na.value=NA)+
+    labs(fill="Depth",title=x)
+  p
+})
+walk(zones_p,plot)
+```
+
+### GLORYS
+
+The GLORYS files have already been subsetted to the different feeding grounds.
+
+```{r}
+glorys.fls <- list.files(here('data','glorys','phys','raw'),full.names = T) |>
+  str_subset("statics",negate=T)
+
+# use the nc files to find the timestamps
+glorys_times1 <- tidync(glorys.fls[1]) |> hyper_transforms() |> pluck('time') |> pull('timestamp')
+glorys_times2 <- tidync(glorys.fls[2]) |> hyper_transforms() |> pluck('time') |> pull('timestamp')
+glorys_times <- c(glorys_times1,glorys_times2) |> as_date()
+```
+
+### MOM6
+
+The MOM6 data are in a single .nc file downloaded from the online portal.
+
+```{r}
+mom6.fl <- list.files(here('data','mom6','raw'),full.names = T)
+
+# get times for mom6. we'll attach these to the regridded data below
+mom6_times <- tidync(mom6.fl) |> hyper_transforms() |> pluck('time') |> pull('timestamp') |> 
+  as_date()
+mom6.ym <- ym(paste(year(mom6_times),month(mom6_times),sep="_"))
+```
+
+
+### GHRSST
+
+The GHRSST data have been downloaded as monthly rasters (not yet spatially subsetted by zone)
+
+```{r}
+ghrsst.fls <- list.files(here('data','podaac'),full.names=T) |> str_subset(".tif")
+ghrsst.m <- str_split_i(ghrsst.fls,"_",6) |> str_remove_all(".tif") # extract month from file name
+ghrsst.y <- str_split_i(ghrsst.fls,"_",5) # extract year from file name
+ghrsst.ym <- ym(paste(ghrsst.y,ghrsst.m,sep="_")) # create dates
+ghrsst.fl.sort <- ghrsst.fls[match(sort(ghrsst.ym),ghrsst.ym)] # sort file names in date order
+
+# import the raster in the right date order and add the times
+ghrsst.rast <- rast(ghrsst.fl.sort)
+time(ghrsst.rast) <- sort(ghrsst.ym)
+```
+
+## Regrid
+
+In order to compare MOM6 (which is run on a curvilinear grid) to the other sources (which are on a linear grid), we need to regrid the MOM6 file to the same CRS and and resolution as the GLORYS grid. We do this with the GDAL utility `warp`, using cubic interpolation to a linear grid with the same resolution as GLORYS.
+
+### MOM6
+
+```{r}
+regrid.dir <- here('data','mom6','regrid')
+if(!dir.exists(regrid.dir)) dir.create(regrid.dir)
+
+mom6.regrid.fn <- here('data','mom6','regrid','sst.regrid.nc')
+```
+
+```{r,eval=F}
+# Regridding goes from ROMS curvilinear grid to a regular, 0.1x0.1degree lat/lon grid
+# Regridding is done with cubic interpolation
+gdal_utils("warp",
+           source=mom6.fl,
+           destination = mom6.regrid.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+```
+
+
+Here's the MOM6 raster stack regridded for further analysis
+
+```{r}
+mom6.rast <- rast(mom6.regrid.fn)
+```
+
+Plot a time slice
+
+```{r}
+plot(mom6.rast[[1]])
+```
+
+### Check NA Handling
+
+We need NAs to be encoded with `NA`, which the warping utility may not have done. But we can check because we included a "nodata" band in the file, which identifies the cells that should be NA.
+
+```{r}
+# cells that the warping algorithm identified as nodata
+mom6mask <- subset(mom6.rast,nlyr(mom6.rast))
+plot(mom6mask)
+#instead of 255 or 0, how about 1 and NA
+mom6mask <- mom6mask |> 
+  subst(0,NA) |> #replace 0 with NA
+  subst(255,1) #replace 255 with 1
+plot(mom6mask)
+```
+
+Use this NA mask to make sure the NAs are properly designated.
+
+```{r}
+mom6.rast <- mom6.rast |> 
+  mask(mom6mask) # takes a second to mask all the layers
+
+# and remove the mask as a layer
+mom6.nlyr <- nlyr(mom6.rast)
+mom6.rast <- subset(mom6.rast,c(0:(mom6.nlyr-1)))
+
+# and plot again
+plot(mom6.rast[[1]])
+```
+
+This looks better.
+
+```{r}
+# add the right timesteps
+time(mom6.rast) <- mom6.ym
+```
+
+## Compare
+
+### Time Subset
+
+What time range of months do we have for each dataset?
+
+```{r}
+setdiff(time(mom6.rast),glorys_times) # these are the same (Jan 1993 - Dec 2024)
+setdiff(time(mom6.rast),time(ghrsst.rast)) # GHRSST starts in September, 2002
+
+# GHRSST is the limiting dataset for time series
+# Designate which GLORYS and MOM6 layers to use to make a consistent timeseries
+which_glorys_times <- which(glorys_times%in%time(ghrsst.rast))
+which_mom6_times <- which(time(mom6.rast)%in% time(ghrsst.rast))
+
+# time lookup table that links raster layer numbers to year/months
+timetbl <- tibble(date=time(ghrsst.rast),year=year(date),month=month(date)) |> 
+  mutate(ind=row_number())
+```
+
+### Spatial Subset
+
+MOM6 does not cover the northwest Pacific; which feeding zones can we apply the comparison to? Find which feeding zones are covered by MOM6.
+
+```{r}
+plot(mom6.rast[[1]]);polys(fzonesv)
+fzones_sub <- fzonesv[is.related(fzonesv,ext(mom6.rast),"within")] # we only lose RUS+WAL
+plot(mom6.rast[[1]]);polys(fzones_sub)
+```
+
+We actually only lose 1 feeding ground (Russia and W. Aleutians)
+
+### Feeding Zone Rasters
+
+Make a raster for each feeding zone with 3 sub-datasets, one from each SST source. The rasters will all have identical extents, resolutions, and time steps. Specifically, we use bilinear interpolation to resample GHRSST and MOM6 to the GLORYS geometry. We crop and mask the output layers using our bathymetry mask from above, as well as the shapefile of feeding zones, in order to "mask out" (i.e., set to `NA`) any grid cells that we do not want to include in our correlation and anomaly calculations.
+
+```{r}
+# for a given zone, make a raster dataset
+make_sst_r_3source <- function(z){
+  # get GLORYS (data is in two chunks, which we combine and then filter for the right times)
+  glfn <- glorys.fls |> str_subset(str_escape(z)) # find the right files
+  glr1 <- rast(glfn[1],subds="thetao")
+  glr2 <- rast(glfn[2],subds='thetao')
+  glr <- c(glr1,glr2) |> subset(which_glorys_times) # filter time
+  if(any(as.vector(ext(glr))<0)) glr <- rotate(glr) # rotate longitude if needed
+  names(glr) <- rep("glorys.sst",nlyr(glr))
+  
+  # get GHRSST, crop to GLORYS zone, and resample
+  ghrsstr <- ghrsst.rast |> 
+    crop(glr) |> # crop to GLORYS extent 
+    resample(glr,method='bilinear') |> # resample to GLORYS grid geometry using bilinear interpolation
+    mask(glr) # mask out cells that are NA in GLORYS
+  ghrsstr <- ghrsstr-273 # convert SKelvin to C
+  names(ghrsstr) <- rep("ghrsst",nlyr(ghrsstr))
+  
+  # get MOM6, crop, and resample
+  mom6r <- mom6.rast |> 
+    subset(which_mom6_times) |> #filter time
+    crop(glr) |> # crop to GLORYS extent
+    resample(glr,method='bilinear') |> 
+    mask(glr)
+  names(mom6r) <- rep("mom6.sst",nlyr(mom6r))
+  
+  # join
+  srds <- sds(glr,ghrsstr,mom6r)
+  
+  # do a final trim using the bathymetry mask and the zone polygon
+  # this masks out areas > 1000m depth
+  zv <- fzones_sub %>% subset(fzones_sub$zoneID==z)
+  rmask <- mask1k_phys |> crop(zv) |> mask(zv)
+  srds <- srds |> 
+    lapply(crop,y=rmask) |> 
+    lapply(mask,mask=rmask) |> sds()
+  
+  # name the sub-datasets
+  names(srds) <- c("GLORYS","GHRSST","MOM6")
+  
+  srds
+}
+```
+
+Test the function, e.g. for the NGOA (Northern Gulf of Alaska) feeding zone.
+
+```{r}
+test <- make_sst_r_3source("NGOA_8")
+
+# first time slice
+test_slice <- c(test$GLORYS[[1]],test$GHRSST[[1]],test$MOM6[[1]])
+plot(test_slice,range=c(8,14))
+```
+
+Now let's make the raster datasets for all the feeding zones.
+
+```{r}
+# Make the raster dataset for each feeding zone
+zones_datasets <- map(fzones_sub$zoneID, make_sst_r_3source) |> 
+  set_names(str_replace_all(fzones_sub$Name,"\\+","_")) # set names for the list of zones
+
+# a factor for plotting the zones from Northwest -> Southeast
+zones_ord <- tibble(zone=names(zones_datasets),zone_ord=factor(zone,levels=c("EAL_BER","WGOA","EAL_BER_WGOA","NGOA","GOA","SEA_NBC","SBC_WA","OR_CA","MX_BJ")))
+                    
+```
+
+To plot an individual month
+
+```{r,fig.width=8,fig.height=6}
+compare_month <- function(dat,y,m){
+  lyrind <- timetbl |> filter(year==y,m==month) |> pull(ind)
+  subdat <- map(dat,subset,subset=lyrind) |> rast()
+  plot(subdat,range=round(range(minmax(subdat))),fill_range=T)
+}
+compare_month(zones_datasets$SEA_NBC,y=2003,m=12)
+```
+
+### Correlation
+
+Using the dataset we created above, we can compute the Pearson correlation between the 3 pairs of SST sources for each time step.
+
+A function to calculate the correlation between the 3 SST sources, using `terra::layerCor`.
+
+```{r}
+make_cor_month <- function(dat,tind){ #for a given dataset and time index
+  # pull out the right time step from each source
+  r <- dat |> lapply(\(k)subset(k,subset=tind)) |> 
+    # make into a raster, where the raster layers are the 3 sources
+    rast()
+  # calculate the correlation between the 3 layers
+  out <- layerCor(r,fun="cor") |> 
+    # pluck the correlation matrix from the resultS
+    pluck('correlation')
+  # make into a longform dataframe
+  outlong <- out |> as_tibble() |> 
+    mutate(Var1=rownames(out)) |> 
+    pivot_longer(cols=-Var1,names_to="Var2",values_to="correlation")
+  outlong |> mutate(ind=tind)
+}
+```
+
+```{r, eval=F}
+# This takes a few minutes to run
+dataset_cor_ts <- map(zones_datasets,\(x){
+  map(timetbl$ind,\(tind){ # for each time slice, calculate cor
+    make_cor_month(x,tind)
+  }) |> 
+    list_rbind()
+},.progress = T)
+```
+
+```{r,include=F}
+# write_rds(dataset_cor_ts,here('data','sst comparison','correlation_by_zone_3datasets.rds'))
+dataset_cor_ts <- read_rds(here('data','sst comparison','correlation_by_zone_3datasets.rds'))
+```
+
+We can now make a correlation time series
+
+```{r,fig.width=8,fig.height=6}
+dataset_cor_df <- map2(dataset_cor_ts,names(dataset_cor_ts),\(x,y) mutate(x,zone=y)) |> 
+  list_rbind() |> 
+  # zones as factor for plotting order
+  left_join(zones_ord,by=join_by(zone)) |> 
+  # remove correlations with themselves
+  filter(correlation<1) |> 
+  # identifier for pair
+  unite(pair,Var1,Var2,remove=F) |> 
+  # remove extras again (because correlation is symmetrical)
+  filter(pair %in% c("GLORYS_GHRSST","GLORYS_MOM6","GHRSST_MOM6")) |> 
+  left_join(timetbl,by=join_by(ind))
+
+dataset_cor_ts_p <- dataset_cor_df |> 
+  ggplot(aes(date,correlation,col=pair))+
+  geom_line()+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  facet_wrap(~zone_ord)+
+  labs(x="Time",y="Correlation",color="Dataset pair")+
+  theme_minimal()+
+  theme(panel.border = element_rect(fill=NA,color='black'))
+dataset_cor_ts_p
+```
+
+This looks like it has a seasonal pattern. Calculate average correlation by month.
+
+```{r,fig.width=8,fig.height=6}
+dataset_cor_df_month <- dataset_cor_df |> 
+  group_by(month,zone_ord,pair) |> 
+  summarise(cor.mean=mean(correlation),
+            cor.sd=sd(correlation),.groups = "drop") |> 
+  mutate(upper=cor.mean+cor.sd,
+         lower=cor.mean-cor.sd)
+dataset_cor_ts_p2 <- dataset_cor_df_month |> 
+  ggplot(aes(month,cor.mean,color=pair))+
+  geom_smooth(se=F)+
+  geom_pointrange(aes(ymax=upper,ymin=lower),position = position_jitter())+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  labs(y="Mean Correlation",x="Month")+
+  facet_wrap(~zone_ord,scales='free_y')+
+  scale_x_continuous(breaks=seq(1,12,by=1))+
+  theme_minimal()+
+  theme(panel.border = element_rect(fill=NA,color='black'))
+dataset_cor_ts_p2
+```
+
+Notes from correlation analysis (note the different y-axis scales on the plot above):
+
+* For the most part, GLORYS and GHRSST (green line) are most closely correlated with each other than either of them are with MOM6. However, in the Western Gulf of Alaska, GLORYS is negligibly or negatively correlated with GHRSST in October and November.
+* In the Eastern Aleutians and Bering Sea zone, all 3 datasets are highly correlated in the winter, and a little less in summer. But all correlations for that zone are between 0.80 and 0.98.
+* GHRSST and GLORYS are the most highly correlated pair across zones. They are highly correlated in the winter (~Nov-March), and less so in the summer.
+* GLORYS and MOM6 are the least correlated pair, across most zones and seasons. Correlation is consistently <0.5 in the AK/BC/Washington areas and in the Western Gulf of Alaska.
+
+
+### Mean Difference
+
+We can also look at how the datasets are "biased" compared to one another by computing the mean differences between them.
+
+```{r}
+make_dif_month <- function(dat,tind){
+  # pull timestep from each dataset, recombine into a layered raster
+  r <- dat |> lapply(\(k) subset(k,subset=tind)) |> rast()
+  
+  # make the difference rasters
+  glorys_ghrsst <- r[["GLORYS"]]-r[["GHRSST"]]
+  glorys_mom6 <- r[["GLORYS"]]-r[["MOM6"]]
+  ghrsst_mom6 <- r[["GHRSST"]]-r[["MOM6"]]
+  
+  # calc mean differences
+  dif1 <- global(glorys_ghrsst,'mean',na.rm=T) |> as.numeric()
+  dif2 <- global(glorys_mom6,'mean',na.rm=T) |> as.numeric()
+  dif3 <- global(ghrsst_mom6,'mean',na.rm=T) |> as.numeric()
+  
+  sd1 <- global(glorys_ghrsst,'sd',na.rm=T) |> as.numeric()
+  sd2 <- global(glorys_mom6,'sd',na.rm=T) |> as.numeric()
+  sd3 <- global(ghrsst_mom6,'sd',na.rm=T) |> as.numeric()
+  
+  # out
+  tibble(pair=c("GLORYS_GHRSST","GLORYS_MOM6","GHRSST_MOM6"),
+         meandiff=c(dif1,dif2,dif3),
+         sddiff =c(sd1,sd2,sd3),
+         ind=tind)
+  
+}
+```
+
+```{r, eval=F}
+dataset_dif_ts <- map(zones_datasets,\(x){ 
+  map(timetbl$ind,\(tind){ # for each time slice, calculate diff
+    make_dif_month(x,tind)
+  }) |> 
+    list_rbind()#row bind everything
+},.progress = T)# takes about 5m to run
+```
+
+```{r,include=F}
+# write_rds(dataset_dif_ts,here('data','sst comparison','meandiff_by_zone_3datasets.rds'))
+dataset_dif_ts <- read_rds(here('data','sst comparison','meandiff_by_zone_3datasets.rds'))
+```
+
+Make a timeseries
+
+```{r,fig.width=8,fig.height=8}
+dataset_dif_df <- map2(dataset_dif_ts,names(dataset_dif_ts),\(x,y) mutate(x,zone=y)) |> 
+  list_rbind() |>  
+  left_join(timetbl,by=join_by(ind)) |> 
+  # zones as factor for plotting order
+  left_join(zones_ord,by=join_by(zone))
+
+dataset_dif_ts_p <- dataset_dif_df |> 
+  ggplot(aes(date,meandiff,col=pair,fill=pair))+
+  geom_line()+
+  geom_ribbon(aes(ymax=meandiff+sddiff,ymin=meandiff-sddiff),alpha=0.5)+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  scale_fill_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_grid(zone_ord~pair,scales='free_y')+
+  labs(x="Time",y="Mean Difference",color="Dataset pair",fill="Dataset pair")+
+  theme_minimal()+
+  theme(panel.border = element_rect(fill=NA,color='black'))
+dataset_dif_ts_p
+```
+
+We definitely see a seasonal pattern here as well.
+
+```{r,fig.width=8,fig.height=6}
+dataset_dif_df_month <- dataset_dif_df |> 
+  group_by(month,zone_ord,pair) |> 
+  summarise(dif.mean=mean(meandiff),
+            dif.sd=mean(sddiff),.groups = "drop") |> 
+  mutate(upper=dif.mean+dif.sd,
+         lower=dif.mean-dif.sd)
+dataset_dif_ts_p2 <- dataset_dif_df_month |> 
+  ggplot(aes(month,dif.mean,color=pair))+
+  geom_smooth(se=F)+
+  geom_pointrange(aes(ymax=upper,ymin=lower),position = position_jitter())+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  labs(y="Mean Difference",x="Month")+
+  facet_wrap(~zone_ord,scales='free_y')+
+  scale_x_continuous(breaks=seq(1,12,by=1))+
+  geom_hline(yintercept = 0,linetype=2)+
+  theme_minimal()+
+  theme(panel.border = element_rect(fill=NA,color='black'))
+dataset_dif_ts_p2
+```
+
+What about an annual trend?
+
+```{r,fig.height=6,fig.width=8}
+dataset_dif_df_yr <- dataset_dif_df |> 
+  group_by(year,zone_ord,pair) |> 
+  summarise(dif.mean=mean(meandiff),
+            dif.sd=mean(sddiff),.groups = "drop") |> 
+  mutate(upper=dif.mean+dif.sd,
+         lower=dif.mean-dif.sd)
+dataset_dif_ts_p3 <- dataset_dif_df_yr |> 
+  ggplot(aes(year,dif.mean,color=pair))+
+  geom_smooth(se=F)+
+  geom_pointrange(aes(ymax=upper,ymin=lower),position = position_jitter())+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))+
+  labs(y="Mean Difference",x="Year")+
+  facet_wrap(~zone_ord)+
+  geom_hline(yintercept = 0,linetype=2)+
+  theme_minimal()+
+  theme(panel.border = element_rect(fill=NA,color='black'))
+dataset_dif_ts_p3
+
+```
+
+### Monthly Climatologies
+
+Now that we've aligned all of our data for 3 SST sources across the different feeding zones, we can define a monthly climatology, which will also give us the ability to calculate anomaly rasters.
+
+```{r}
+# Make monthly means (i.e., a monthly climatology) for all zones, for each dataset
+zones_monthly_means <- map(zones_datasets,\(d){
+  lapply(d,tapp,index="months",fun=mean) |> sds()
+})
+```
+
+Here's an example monthly climatology for the GLORYS dataset in the Northern Gulf of Alaska.
+
+```{r}
+paldiv <- diverging_hcl(n = 50,palette = "Blue Red 2")
+zones_monthly_means$NGOA$GLORYS |> 
+  plot(range=c(0,15),fill_range=T,
+       col=paldiv)
+```
+
+Now average across datasets as well, for a single common climatology for each zone.
+
+```{r}
+zones_clim <- map(zones_monthly_means,\(d){
+  app(d,fun=mean)
+})
+```
+
+Here's the same zone, now, but showing the common climatology. Compare with the GLORYS-specific climatology above
+
+```{r}
+zones_clim$NGOA |> 
+  plot(range=c(0,15),fill_range=T,
+       col=paldiv)
+```
+
+### Anomaly Timeseries
+
+We can use the climatology rasters to make a new timeseries of anomalies, defined as the observed values for each dataset, *minus* the climatology.
+
+```{r}
+zones_anom <- map2(zones_datasets,zones_clim,\(dat,clim){
+  anom <- map(dat,\(x) x-clim) |> sds()
+  anom
+})
+```
+
+For a second flavor of anomaly, we can use each dataset's own monthly climatology as the baseline.
+
+```{r}
+zones_anom2 <- map2(zones_datasets,zones_monthly_means,\(dat,clim){
+  anom <- map2(dat,clim,\(x,y) x-y) |> sds()
+  anom
+})
+```
+
+Sticking with the Northern Gulf of Alaska, here is the first 12 time steps of the two versions of anomaly rasters. Remember that these are calculated by subtracting a mean monthly climatology (a common climatology or a dataset-specific climatology, respectively) from the original data.
+
+```{r}
+plot(zones_anom$NGOA$GLORYS[[1:12]],range=c(-1.5,2),fill_range=T,col=paldiv)
+plot(zones_anom2$NGOA$GLORYS[[1:12]],range=c(-1.5,2),fill_range=T,col=paldiv)
+```
+
+We can see that in this particular year (Sep 2002 to Aug 2003), GLORYS suggests that the Northern Gulf of Alaska was warmer than usual, especially in the winter and spring of 2003 (November to April).
+
+Armed with these anomaly rasters, we can now extract some statistics, such as the mean anomaly value across all cells in each time step.
+
+```{r}
+mean_anom_ts <- map2(zones_anom,names(zones_anom),\(d,k) { # across zones
+  ts <- map(d,\(r) global(r,fun='mean',na.rm=T)) |> # mean of each time step of each dataset 
+    as_tibble() |> # make into a dataframe
+    mutate(across(where(is.data.frame),unlist))  
+  df <- timetbl |> bind_cols(as_tibble(ts)) |> mutate(zone=k) # add times and zone name
+  df
+})
+
+mean_anom2_ts <- map2(zones_anom2,names(zones_anom),\(d,k) { # across zones
+  ts <- map(d,\(r) global(r,fun='mean',na.rm=T)) |> # mean of each time step of each dataset 
+    as_tibble() |> # make into a dataframe
+    mutate(across(where(is.data.frame),unlist))  
+  df <- timetbl |> bind_cols(as_tibble(ts)) |> mutate(zone=k) # add times and zone name
+  df
+})
+
+mean_anom_df <- bind_rows(mean_anom_ts) |> 
+  # zones as factor for plotting order
+  left_join(zones_ord,by=join_by(zone))
+mean_anom2_df <- bind_rows(mean_anom2_ts) |> 
+  # zones as factor for plotting order
+  left_join(zones_ord,by=join_by(zone))
+```
+
+### Anomaly Correlation
+
+Overall correlation between these anomaly timeseries, by spatial zone.
+
+```{r,fig.width=8,fig.height=6}
+cor_anom_df <- map(unique(mean_anom_df$zone_ord),\(z){
+  mean_anom_df |> filter(zone_ord==z) |> 
+    dplyr::select(GLORYS,GHRSST,MOM6) |> 
+    cor(method='pearson') |> 
+    as_tibble(rownames = "data1") |> 
+    # make into longform
+    pivot_longer(GLORYS:MOM6,names_to = "data2",values_to="correlation") |> 
+    mutate(zone_ord=z)
+}) |> list_rbind()
+
+cor_anom2_df <- map(unique(mean_anom2_df$zone_ord),\(z){
+  mean_anom2_df |> filter(zone_ord==z) |> 
+    dplyr::select(GLORYS,GHRSST,MOM6) |> 
+    cor(method='pearson') |> 
+    as_tibble(rownames = "data1") |> 
+    # make into longform
+    pivot_longer(GLORYS:MOM6,names_to = "data2",values_to="correlation") |> 
+    mutate(zone_ord=z)
+}) |> list_rbind()
+
+cor_anom_df |> 
+  filter(correlation<1) |> 
+  ggplot(aes(data1,data2,fill=correlation))+
+  geom_tile()+
+  labs(x="Dataset 1",y="Dataset 2",title="Temporal Correlation\n(common climatology)")+
+  scale_fill_viridis(option = "G",direction=-1,limits=c(0.75,1),oob=scales::squish)+
+  facet_wrap(~zone_ord)
+
+cor_anom2_df |> 
+  filter(correlation<1) |> 
+  ggplot(aes(data1,data2,fill=correlation))+
+  geom_tile()+
+  labs(x="Dataset 1",y="Dataset 2",title="Temporal Correlation\n(dataset-specific climatology)")+
+  scale_fill_viridis(option = "G",direction=-1,limits=c(0.75,1),oob=scales::squish)+
+  facet_wrap(~zone_ord)
+```
+
+Anomaly correlation is high, especially using the dataset-specific climatology.
+
+We can plot the anomalies as a time series.
+
+```{r,fig.width=10,fig.height=8}
+mean_anom_dflong <- mean_anom_df |> 
+  pivot_longer(GLORYS:MOM6,names_to = "dataset",values_to="sst_anom")
+mean_anom2_dflong <- mean_anom2_df |> 
+  pivot_longer(GLORYS:MOM6,names_to = "dataset",values_to="sst_anom")
+
+anom_ts_p <- mean_anom_dflong |> 
+  ggplot(aes(date,sst_anom,color=dataset))+
+  facet_wrap(~zone_ord)+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="SST Anomaly by Dataset\n(common climatology)",x="Date",y="SST Anom")+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))
+
+anom2_ts_p <- mean_anom2_dflong |> 
+  ggplot(aes(date,sst_anom,color=dataset))+
+  facet_wrap(~zone_ord)+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="SST Anomaly by Dataset\n(dataset-specific climatology)",x="Date",y="SST Anom")+
+  scale_color_manual(values=qualitative_hcl(palette="Dark 2",n=3))
+anom_ts_p
+anom2_ts_p
+```
+
+## Conclusions
+
+Sea surface temperature from GLORYS, MOM6, and the satellite-derived GHRSST were compared across multiple coastal zones of the Northeast Pacific from the Bering Sea to Mexico. We assessed the correlation, difference/bias, and anomaly correlation between the three datasets. When summarized as monthly anomaly timeseries, the temporal correlation between all the datasets is quite high (>0.8, and >0.92 when using the individual dataset climatologies as the baseline). The correlation at this scale is high among all pairs of datasets across all spatial zones (although correlations are a little lower between MOM6 and the other datasets for the zones from Southeast Alaska to the Oregon and California coast). This likely means that there would be very little difference between datasets if derived indices of interest were calculated in this spatially- and temporally-averaged, mean-centered way. It is clear from the anomaly timeseries that all three datasets are capturing decadal-scale trends, such as the large marine heatwave in the mid-2010s that followed the relatively cooler period from about 2005-2012.
+
+We see a more nuanced picture when we calculate relative differences and correlations between the datasets on a month-by-month basis across regions (sections "Correlation" and "Mean Difference" above). Correlations between datasets for specific months (as opposed to their anomaly correlation across time) are quite low in some places and months. In most zones and months, GLORYS and GHRSST are closely correlated, while MOM6 is less correlated with both other datasets. Correlations generally decline in the summer for the areas from Southeast AK to Southern British Columbia and Washington, suggesting this is a zone of some dynamic disagreement between models. Conversely, in the Gulf of Alaska, the correlations between MOM6 and the other datasets are highest in the summer and fall, and lowest in the winter.
+
+In general, MOM6 is colder than GHRSST and GLORYS. MOM6 is biased cold by ~0.5 to 1 degree in most regions. The Oregon/California and Baja Mexico regions are the exceptions, where GLORYS and MOM6 are in agreement, and both are colder than GHRSST. Across all years, relative bias (difference) between GLORYS and GHRSST is less than 0.5 degrees C in all zones except Baja Mexico. For the Eastern Aleutians and Bering Sea through the Gulf of Alaska, MOM6 is consistently ~0.25-1 degree colder than the other two datasets. In Southeast AK, British Columbia, and Washington, there is a strong seasonal pattern: MOM6 is about 1 degree cooler than GHRSST and GLORYS from October to March, but has near-zero relative bias in the summer. Along the Oregon and California coast, all three datasets agree (near-zero bias) in the spring season, with less agreement in the late summer and fall. Finally, across most zones, the summer season has the most interannual variation in relative bias between datasets.
+
+Overall, these three data sources for sea surface temperature tell similar stories, and at the scale of climate trends and multi-year oceanographic events like heatwaves, all three capture very similar information. For particular spatial regions in particular seasons, there are more substantial differences and less agreement among models, although these differences are normally on the scale of less than 1 degree C.
