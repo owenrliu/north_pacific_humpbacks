@@ -22,74 +22,21 @@ glimpse(test2)
 
 test2 %>% ggplot(aes(eps,Sout,color=ordered(S)))+geom_line(linewidth=1.25)+theme_classic()+labs(color="Baseline S",x=expression(epsilon))
 
-# try reading some outputs?
-totabun_B2F2 <- read_table(here('Diags','B2F2BC.Out'),skip=188,n_max=55,col_names=c("Year","est","SD_log"))
-totabun_B2F2 %>% ggplot(aes(Year,est))+geom_line()+
-  theme_classic()+
-  xlim(1980,NA)
-
-# survival
-b2f2_surv_asia <- read_table(here('Diags','B2F2BC.Out'),skip=1560,na='NaN',n_max=54,col_names=c("Year","RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"),col_types='idddddd') %>% 
-  pivot_longer(`RUS+WAL`:`OR+CA`,names_to="feed",values_to="surv") %>% mutate(breed="Asia")
-b2f2_surv_hawaii <- read_table(here('Diags','B2F2BC.Out'),skip=1616,na='NaN',n_max=54,col_names=c("Year","RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"),col_types='idddddd') %>% 
-  pivot_longer(`RUS+WAL`:`OR+CA`,names_to="feed",values_to="surv") %>% mutate(breed="Hawaii")
-b2f2_surv_mxar <- read_table(here('Diags','B2F2BC.Out'),skip=1672,na='NaN',n_max=54,col_names=c("Year","RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"),col_types='idddddd') %>% 
-  pivot_longer(`RUS+WAL`:`OR+CA`,names_to="feed",values_to="surv") %>% mutate(breed="MX_AR")
-b2f2_surv_mxml <- read_table(here('Diags','B2F2BC.Out'),skip=1728,na='NaN',n_max=54,col_names=c("Year","RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"),col_types='idddddd') %>% 
-  pivot_longer(`RUS+WAL`:`OR+CA`,names_to="feed",values_to="surv") %>% mutate(breed="MX_ML")
-b2f2_surv_cenam <- read_table(here('Diags','B2F2BC.Out'),skip=1784,na='NaN',n_max=54,col_names=c("Year","RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"),col_types='idddddd') %>% 
-  pivot_longer(`RUS+WAL`:`OR+CA`,names_to="feed",values_to="surv") %>% mutate(breed="CenAm")
-
-b2f2_surv_all <- list(b2f2_surv_asia,b2f2_surv_hawaii,b2f2_surv_cenam,b2f2_surv_mxar,b2f2_surv_mxml) %>% bind_rows()
-
-b2f2_surv_all %>% 
-  # group_by(Year,feed) %>% 
-  # summarise(mean_surv=mean(surv,na.rm=T)) %>% 
-  ungroup() %>% 
-  ggplot(aes(Year,surv,color=breed),alpha=0.7)+
-  geom_line(linewidth=1.25)+
-  geom_hline(yintercept=0.96,linetype=2)+
-  geom_vline(xintercept=2015,linetype=2)+
-  geom_vline(xintercept=2005,linetype=2)+
-  theme_classic()+
-  facet_wrap(~feed)
-
-# Check out MOM6 SST
-library(tidync)
-library(sf)
-library(ncdf4)
-library(viridis)
-
-ncfn <- here('data','mom6','tos.nep.full.hcast.monthly.regrid.r20250509.199301-202412.nc')
-nc_open(ncfn)
-x<-tidync(ncfn)
-
-times <- x %>% activate("D0") %>% hyper_tibble() %>%mutate(ind=row_number()) %>% mutate(date=as_date(time)) %>% mutate(year=year(date),month=month(date))
-
-# find a random month
-july2014ind <- times %>% filter(year==2014,month==7) %>% pull(ind)
-
-july2014 <- tidync(ncfn) %>% hyper_filter(time=index==july2014ind) %>% hyper_tibble() %>% 
-  mutate(across(everything(),as.numeric))
-july2014 %>% 
-  st_as_sf(coords=c("lon","lat"),crs=4326) %>% 
-  ggplot(aes(color=tos))+
-  geom_sf()+
-  scale_color_viridis(option='turbo')+
-  theme_classic()+
-  labs(color="Surface T\nJuly 2014")
-
-# Breeding/feeding circular diagram
-mixing <- read_table(here('Diags','B2F2BC.Out'),skip=982,n_max=5,col_names=c("RUS+WAL", "EAL+BER+WGOA", "NGOA", "SEA+NBC", "SBC+WA", "OR+CA"))
-mixing <- mixing %>% mutate(from=c("Asia","Hawaii","MX_AR","MX_ML","CenAm")) %>% pivot_longer(-from,names_to="to",values_to="prop")
-
-library(circlize)
-chordDiagram(mixing)
 
 #######################
-Code="B1F1";SensCase="BC";StochSopt=1;StrayBase=0;IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
-SF=c(0,1,0,1,1,1);SigmaDevS=6;SigmaDevF=0.01;WithMirror=1;Yr1=1970;Yr2=2023;
-AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
+Code="B2F2";SensCase="BC";StochSopt=1;StrayBase=0;IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
+SF=c(1,1,1,1,1,1); YrSDevs=1995;
+SigmaDevS=6;SigmaDevF=0.01;WithMirror=1;Yr1=1970;Yr2=2023;
+AddCV=F;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
 ByCatchFile="BycatchActual_2024_04_24.csv";
 WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
-BootUse;SetNew=0;Init=NULL
+SetNew=0;Init=NULL; envOpt="varK"
+
+
+#### 
+# Gradient checking
+fit$par
+model$gr(fit$par)
+
+### Pulling a result
+obj <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))

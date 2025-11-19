@@ -1,6 +1,7 @@
 library(tidyverse)
 library(here)
 library(circlize)
+library(cowplot)
 library(viridis)
 library(colorspace)
 theme_set(theme_classic())
@@ -126,6 +127,54 @@ plot_survival <- function(obj,opt="F"){
   p
 }
 
+# ------------------------------------------------------------------------------------
+# Plot estimated survival values relative to environmental data
+# Option- either "B" or "F" for survival on breeding or feeding grounds
+plot_survival_curve <- function(obj,opt="F"){
+  
+  # fitted data
+  if(opt=="B") sdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="SurvOutB")
+  if(opt=="F") sdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="SurvOutF")
+  yrs <- pluck(obj,"input","Years")
+  yrs <- yrs[-length(yrs)] #remove the last year because there's no survival calculated
+  numyr <- length(yrs)
+  
+  # names
+  if(opt=="B") zn <- pluck(obj,'input','BreedNames') |> as.character()
+  if(opt=="F") zn <- pluck(obj,'input','FeedNames') |> as.character()
+  numz <- length(zn)
+  
+  sst <- pluck(obj,"input","sst")
+  chl <- pluck(obj,"input","chl")
+  ydevs <- pluck(obj,"input","YrSDevs")
+  envdf <- tibble(year=rep(ydevs:max(yrs),each=numz),
+                  sst=as.vector(sst),
+                  chl=as.vector(chl)) |> 
+    mutate(zone=rep(zn,length(ydevs:max(yrs))))
+  
+  sdat <- sdat |> 
+    mutate(year=rep(yrs,each=numz)) |> 
+    mutate(zone=rep(zn,numyr)) |> 
+    mutate(year=as.integer(year)) |> 
+    set_names(c("param","survival","sd.survival","year","zone")) |> 
+    mutate(upper=survival+1.96*sd.survival,lower=survival-1.96*sd.survival) |> 
+    mutate(upper=pmin(upper,1),lower=pmax(0,lower)) |>
+    left_join(envdf,by=join_by(year,zone))
+  
+  psst <- sdat |> 
+    ggplot(aes(sst,survival,color=year,ymin=lower,ymax=upper))+
+    geom_point()+
+    labs(x="SST",y="Survival")+
+    scale_color_viridis()+
+    facet_wrap(~zone)
+  pchl <- sdat |> 
+    ggplot(aes(chl,survival,color=year,ymin=lower,ymax=upper))+
+    geom_point()+
+    labs(x="Chlorophyll",y="Survival")+
+    scale_color_viridis()+
+    facet_wrap(~zone)
+  cowplot::plot_grid(psst,pchl,nrow=2)
+}
     
 # ------------------------------------------------------------------------------------
 # Plot index of abundance
@@ -140,6 +189,35 @@ plot_abundance <- function(obj,opt="total"){
   yrs <- pluck(obj,"input","Years")
   numyr <- length(yrs)
   
+  # get the right hypothesis
+  breednames <- obj$input$BreedNames
+  feednames <- obj$input$FeedNames
+  fopt <- ifelse("EAL+BER+WGOA"%in%feednames,"F2","F1")
+  bopt <- ifelse("MX_ML"%in%breednames,"B2","B1")
+  hyp <- paste0(bopt,fopt)
+  if(fopt=="F1") hyp<-c(hyp,"F1 only")
+  if(fopt=="F2") hyp<-c(hyp,"F2 only")
+  if(bopt=="B1") hyp<-c(hyp,"B1 only")
+  if(bopt=="B2") hyp<-c(hyp,"B2 only")
+  hyp <- c(hyp,"All")
+  
+  # get raw survey data
+  Surveys <- read.csv(here('data',"SurveyAll.duringWorkshop1.csv"),fill=T,comment.char="?",header=T,row.names=NULL)[,1:12]
+  colnames <- c("Year1","Year2","Estimate","CV","Area","Rel","Use","Add.cv","Hypothesis","Class","SensUse","Reference")
+  colnames(Surveys) <- colnames
+  # survey bias for scaling
+  Qvec <- obj$report$Qest
+  Qvec[1] <- 1
+  survd <- Surveys |> 
+    filter(Hypothesis%in%hyp,Use=="Yes") |> 
+    rename(year=Year2) |> 
+    dplyr::select(year,Estimate,CV,Area,Class,Rel,Hypothesis,Class) |> 
+    mutate(sd.estimate=Estimate*CV,
+           q = 1/Qvec[Class],
+           rescaled.est = q*Estimate,
+           rescaled.upper=q*(Estimate+sd.estimate),
+           rescaled.lower=q*(Estimate-sd.estimate))
+  
   if(opt=="total") {
     d <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="LogNT")
     d <- d |> 
@@ -147,10 +225,14 @@ plot_abundance <- function(obj,opt="total"){
       set_names(c("param","total.ln","sd.abun","year")) |> 
       mutate(total=exp(total.ln)) |> 
       mutate(upper=exp(total.ln+1.96*sd.abun),lower=exp(total.ln-1.96*sd.abun))
+    surv <- survd |> filter(Area=="Total")
+    d <- d |> left_join(surv,by=join_by(year))
     p <- d |> 
-      ggplot(aes(year,total,ymax=upper,ymin=lower))+
-      geom_ribbon(fill='lightblue')+
-      geom_line()+
+      ggplot()+
+      geom_ribbon(aes(year,total,ymax=upper,ymin=lower),fill='lightblue')+
+      geom_line(aes(year,total))+
+      geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower),
+                      linetype=2,size=0.5)+
       labs(x="Year",y="Total Abundance")
   }
   if(opt=='breed'){
@@ -166,12 +248,18 @@ plot_abundance <- function(obj,opt="total"){
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
     
+    surv <- survd |> filter(Area%in%unique(d$zone))
+    d <- d |> left_join(surv,by=join_by(year,zone==Area))
+    
     p <- d |> 
-      ggplot(aes(year,abun,ymax=upper,ymin=lower))+
-      geom_ribbon(fill='lightblue')+
-      geom_line()+
+      ggplot()+
+      geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
+      geom_line(aes(year,abun))+
+      geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower,color=Rel),
+                      linetype=2,position=position_jitter(),size=0.5)+
       facet_wrap(~zone,scales='free_y')+
-      labs(x="Year",y="Abundance")    
+      scale_color_manual(na.translate=FALSE,values=c("black","orange"))+
+      labs(x="Year",y="Abundance",color="Observation\nType")
   }
   if(opt=='feed'){
     d <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="LogNf")
@@ -185,13 +273,18 @@ plot_abundance <- function(obj,opt="total"){
       set_names(c("param","ln.abun","sd.abun","year","zone")) |> 
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
+    surv <- survd |> filter(Area%in%unique(d$zone))
+    d <- d |> left_join(surv,by=join_by(year,zone==Area))
     
     p <- d |> 
-      ggplot(aes(year,abun,ymax=upper,ymin=lower))+
-      geom_ribbon(fill='lightblue')+
-      geom_line()+
+      ggplot()+
+      geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
+      geom_line(aes(year,abun))+
+      geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower,color=Rel),
+                      linetype=2,position = position_jitter(),size=0.5)+
       facet_wrap(~zone,scales='free_y')+
-      labs(x="Year",y="Abundance")    
+      scale_color_manual(na.translate=FALSE,values=c("black","orange"))+
+      labs(x="Year",y="Abundance",color="Observation\nType")
   }
   p
 }
@@ -201,13 +294,13 @@ plot_abundance <- function(obj,opt="total"){
 # Instead of one output object, this function takes a list of multiple objects
 # and a character vector of the names of the scenarios
 # MAKE SURE THE NAMES MATCH THE ORDER OF THE LIST
-
-obj1 <- read_rds(here('Diags','B1F1BC.rds'))
-obj2 <- read_rds(here('Diags','B2F1BC.rds'))
-obj3 <- read_rds(here('Diags','B1F2BC.rds'))
-obj4 <- read_rds(here('Diags','B2F2BC.rds'))
-objlist <- list(obj1,obj2,obj3,obj4)
-scen.names <- c("B1F1","B2F1","B1F2","B2F2")
+# 
+# obj1 <- read_rds(here('Diags','B1F1BC.rds'))
+# obj2 <- read_rds(here('Diags','B2F1BC.rds'))
+# obj3 <- read_rds(here('Diags','B1F2BC.rds'))
+# obj4 <- read_rds(here('Diags','B2F2BC.rds'))
+# objlist <- list(obj1,obj2,obj3,obj4)
+# scen.names <- c("B1F1","B2F1","B1F2","B2F2")
 
 plot_compare_abundance <- function(objlist,scen.names){
   yrs <- pluck(objlist,1,"input","Years")

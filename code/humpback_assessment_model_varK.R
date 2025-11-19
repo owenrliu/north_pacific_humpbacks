@@ -1,4 +1,6 @@
 # FUNCTION THAT DEFINES THE HUMPBACK ASSESSMENT MODEL
+# October, 2025- trying to build this for environmental drivers of survival
+
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
 f <- function(parms,dat){
   
@@ -50,22 +52,25 @@ f <- function(parms,dat){
   
   Penal2 <- 100.0/(1+exp(-1000.0*(fmax-0.98)));
   
-  # Extract the SBdevs
-  SBdevPnt <- 1;
-  SBdevYr <- matrix(0,nrow=Nbreed,ncol=Nyr);
-  for (Ibreed in 1:Nbreed)
-    if (SBdevEst[Ibreed] > 0)
-      for (Year in SBdevMat[Ibreed,1]:SBdevMat[Ibreed,2])
-      { SBdevYr[Ibreed,Year+1] <- SBdev[SBdevPnt]; SBdevPnt <- SBdevPnt + 1; }
+  # Extract the SFdevs as a function of environment
+  # SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
+  # IenvStart=Nyr-length(YrSDevs:Yr2)+1
+  # # Regression (omegasst*sst+omegachl*chl)
+  env_index <- omega_sst*sst+omega_chl*chl
+  # whichFeed <- which(SF==1)
+  # SFdevYr[whichFeed,IenvStart:Nyr] <- env_index[whichFeed,]
   
   # Extract the SFdevs
   SFdevPnt <- 1;
   SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr);
-  for (Ifeed in 1:Nfeed)
+  for (Ifeed in 1:Nfeed){
     if (SFdevEst[Ifeed] > 0)
-      for (Year in SFdevMat[Ifeed,1]:SFdevMat[Ifeed,2])
-      { SFdevYr[Ifeed,Year+1] <- SFdev[SFdevPnt]; SFdevPnt <- SFdevPnt + 1; }
-  
+      for (Year in SFdevMat[Ifeed,1]:SFdevMat[Ifeed,2]){
+        SFdevYr[Ifeed,Year+1] <- SFdev[SFdevPnt]
+        SFdevPnt <- SFdevPnt + 1 
+      }
+  }
+
   # Mirror as needed
   if (Nmirror>0)
     for (Im in 1:Nmirror)
@@ -73,6 +78,19 @@ f <- function(parms,dat){
       Imi = Mirror[Im,1]+1; Omi = Mirror[Im,2]+1;
       for (Year in 1:Nyr) SFdevYr[Omi,Year] <- SFdevYr[Imi,Year];
     }
+
+  # Difference between SFdevs and environmental index
+  # Only used if running the environmental index version of the model
+  # YrMatch <- ncol(SFdevYr)-(Yr2-YrSDevs)
+  # envPenal <- c(SFdevYr[,YrMatch:ncol(SFdevYr)]-env_index)
+  
+  # Extract the SBdevs
+  SBdevPnt <- 1;
+  SBdevYr <- matrix(0,nrow=Nbreed,ncol=Nyr);
+  for (Ibreed in 1:Nbreed)
+    if (SBdevEst[Ibreed] > 0)
+      for (Year in SBdevMat[Ibreed,1]:SBdevMat[Ibreed,2])
+      { SBdevYr[Ibreed,Year+1] <- SBdev[SBdevPnt]; SBdevPnt <- SBdevPnt + 1; }
   
   # Extract the FBdevs
   FBdevPnt <- 1;
@@ -82,6 +100,7 @@ f <- function(parms,dat){
       for (Year in FBdevMat[Ibreed,1]:FBdevMat[Ibreed,2])
       { FBdevYr[Ibreed,Year] <- FBdev[FBdevPnt]; FBdevPnt <- FBdevPnt + 1; }
   
+  
   # Set up basis for A and K (not used in the base mode)
   ParAV <- matrix(0,nrow=Nfeed,ncol=Nyr+1);
   MultK <- matrix(0,nrow=Nfeed,ncol=Nyr+1);
@@ -89,7 +108,23 @@ f <- function(parms,dat){
     for (Ifeed in 1:Nfeed)
     { ParAV[Ifeed,Year] <- ParA; MultK[Ifeed,Year] <- 1; }
   
-  # Set up K by herd, breeding stock, and feeding gound
+  # Extract the Kdevs as a function of environment
+  # KdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
+  # IenvStart=Nyr-length(YrSDevs:Yr2)+1
+  # KdevYr[,IenvStart:Nyr] <- env_index
+  
+  KdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr+1)
+  YrMatch <- ncol(KdevYr)-(Yr2-YrSDevs)
+  KdevFill <- matrix(Kdev,nrow=Nfeed,byrow=T) # fill with parameter Kdev
+  KdevYr[,YrMatch:(Nyr+1)] <- KdevFill
+  # Updated MultK with deviations
+  MultK <- MultK+KdevYr
+  
+  # Difference between Kdevs and environmental index
+  # Used in the likelihood if running the variable K version of the model
+  envPenal <- c(KdevFill-env_index)
+  
+  # Set up K by herd, breeding stock, and feeding ground
   BreedK <- rep(0,Nbreed); FeedK <- rep(0,Nfeed); 
   NN <- array(0,dim=c(Nbreed,Nfeed,Nyr+1)); NNK <- matrix(0,nrow=Nbreed,ncol=Nfeed)
   Nb <- matrix(0,nrow=Nbreed,ncol=Nyr+1);  Nf <- matrix(0,nrow=Nfeed,ncol=Nyr+1)
@@ -204,19 +239,19 @@ f <- function(parms,dat){
     }
     
     # Influx (part 1) [Note used for this assessment]
-    for (Ifeed in 1:Nfeed) MultK[Ifeed,Year+1] <- MultK[Ifeed,Year];
-    if (Year==2014-Yr1+1)
-    {
-      MultK[4,Year+1] <- MultK[4,Year]*(1.0-Influx);
-      MultK[5,Year+1] <- MultK[5,Year]*(1.0-Influx);
-      MultK[6,Year+1] <- (MultK[6,Year]*Nf[6,1] + MultK[4,Year]*Influx*Nf[4,1]+MultK[5,Year]*Influx*Nf[5,1])/(MultK[6,Year]*Nf[6,1]);
-      for (Ibreed in 1:Nbreed)
-      {
-        NN[Ibreed,6,Year] <- NN[Ibreed,6,Year] + NN[Ibreed,4,Year]*Influx + NN[Ibreed,5,Year]*Influx;
-        NN[Ibreed,4,Year] <- NN[Ibreed,4,Year]*(1.0-Influx);
-        NN[Ibreed,5,Year] <- NN[Ibreed,5,Year]*(1.0-Influx);
-      }
-    }
+    # for (Ifeed in 1:Nfeed) MultK[Ifeed,Year+1] <- MultK[Ifeed,Year];
+    # if (Year==2014-Yr1+1)
+    # {
+    #   MultK[4,Year+1] <- MultK[4,Year]*(1.0-Influx);
+    #   MultK[5,Year+1] <- MultK[5,Year]*(1.0-Influx);
+    #   MultK[6,Year+1] <- (MultK[6,Year]*Nf[6,1] + MultK[4,Year]*Influx*Nf[4,1]+MultK[5,Year]*Influx*Nf[5,1])/(MultK[6,Year]*Nf[6,1]);
+    #   for (Ibreed in 1:Nbreed)
+    #   {
+    #     NN[Ibreed,6,Year] <- NN[Ibreed,6,Year] + NN[Ibreed,4,Year]*Influx + NN[Ibreed,5,Year]*Influx;
+    #     NN[Ibreed,4,Year] <- NN[Ibreed,4,Year]*(1.0-Influx);
+    #     NN[Ibreed,5,Year] <- NN[Ibreed,5,Year]*(1.0-Influx);
+    #   }
+    # }
     
     # Update feeding ground numbers
     for (Ifeed in 1:Nfeed)
@@ -235,11 +270,12 @@ f <- function(parms,dat){
           LogitSA <- log(1.0/SA-1.0);
           SurvOutB[Ibreed,Year] <- 1.0/(1.0+exp(LogitSA+SBdevYr[Ibreed,Year]*Sigma_SBdev));
           SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year]*Sigma_SFdev));
+          # SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year])); # with no sigma
           if (StochSopt==0) SAuse <- SurvOutB[Ibreed,Year];
           if (StochSopt==1) SAuse <- SurvOutF[Ifeed,Year];
           # Eqn B.4
           Depl <- Nf[Ifeed,Ioffset]/(FeedK[Ifeed]*MultK[Ifeed,Ioffset]);
-          #Depl <- Depl/(1.0+exp(30.0*(Depl-0.99)))+0.99/(1.0+exp(-30.0*(Depl-0.99))) 
+          Depl <- Depl/(1.0+exp(30.0*(Depl-0.99)))+0.99/(1.0+exp(-30.0*(Depl-0.99)))
           Term1 <- 1.0 - Depl;
           Term1 <- f0*(1.0+ParAV[Ifeed,Ioffset]*Term1);
           Term1 <- 0.0001+(Term1-0.0001)/(1+exp(-30.0*Term1)) 
@@ -270,6 +306,7 @@ f <- function(parms,dat){
           LogitSA <- log(1.0/SA-1.0);
           SurvOutB[Ibreed,Year] <- 1.0/(1.0+exp(LogitSA+SBdevYr[Ibreed,Year]*Sigma_SBdev));
           SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year]*Sigma_SFdev));
+          # SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year])); # with no sigma
           if (StochSopt==0) SAuse <- SurvOutB[Ibreed,Year];
           if (StochSopt==1) SAuse <- SurvOutF[Ifeed,Year];
           # Eqn B.4
@@ -301,6 +338,7 @@ f <- function(parms,dat){
           LogitSA <- log(1.0/SA-1.0);
           SurvOutB[Ibreed,Year] <- 1.0/(1.0+exp(LogitSA+SBdevYr[Ibreed,Year]*Sigma_SBdev));
           SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year]*Sigma_SFdev));
+          # SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year])); # with no sigma
           if (StochSopt==0) SAuse = SurvOutB[Ibreed,Year];
           if (StochSopt==1) SAuse = SurvOutF[Ifeed,Year];
           # Eqn B.4
@@ -343,11 +381,14 @@ f <- function(parms,dat){
   # Likelihood
   # =================================================================================================================================
   
-  LogLike1 = 0;
-  LikeCompSurv <- rep(0,NsurveyData); 
-  LikeMixComp <- rep(0,NmixData);
-  LogLike2a <- rep(0,2); LogLike2b <- rep(0,2)
-  PredSurv <- rep(0,NsurveyData); SurveySD <- rep(0,NsurveyData); Qest <- rep(0,NsurveySeries)
+  LogLike1 = 0; # Survey data total likelihood
+  LikeCompSurv <- rep(0,NsurveyData) # Likelihood by survey
+  LikeMixComp <- rep(0,NmixData) # Likelihood of each mixing datum
+  LogLike2a <- rep(0,2) # Mixing data likelihood, Breeding to Feeding, 
+  LogLike2b <- rep(0,2) # Mixing data likelihood, Feeding to Breeding
+  PredSurv <- rep(0,NsurveyData)
+  SurveySD <- rep(0,NsurveyData)
+  Qest <- rep(0,NsurveySeries)
   PredMixOut <- array(0,dim=c(2,Nbreed,Nfeed))
   PredMix <- rep(0,NmixData)
   ObsMixPropI <- matrix(0,nrow=NmixData,ncol=4);                           # Mixing observations (integers)
@@ -490,10 +531,12 @@ f <- function(parms,dat){
   Penal <- Penal + logBK_sumSQ
   Penal <- Penal - sum(dnorm(SBdev,0.0,1.0,log=T));
   Penal <- Penal - sum(dnorm(FBdev,0.0,1.0,log=T));
-  Penal <- Penal - sum(dnorm(SFdev,0.0,1.0,log=T));
+  # Penal <- Penal - sum(dnorm(SFdev,0.0,1.0,log=T)); # Taking this out because driving directly with environment
+  Penal <- Penal - sum(dnorm(envPenal,0.0,1.0,log=T))
   TotalK <- sum(BreedK)
-  if (UseKPrior > 0)
+  if (UseKPrior > 0){
     Penal <- Penal - UseKPrior*log(1.0/(1.0+exp(Prior_int+Prior_slope*TotalK)))
+  }
   datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b);
   neglogL <-  Penal + datalike;
   #print(neglogL)
@@ -516,8 +559,11 @@ f <- function(parms,dat){
   ADREPORT(LogNT);
   ADREPORT(LogNb);
   ADREPORT(LogNf);
-  ADREPORT(SBdevYr);
+  # ADREPORT(SBdevYr);
+  ADREPORT(SFdevYr);
   ADREPORT(SurvOutB);
+  ADREPORT(omega_sst);
+  ADREPORT(omega_chl);
   ADREPORT(SurvOutF);
   
   REPORT(Nb);
@@ -546,8 +592,9 @@ f <- function(parms,dat){
   REPORT(NN);
   REPORT(NNS);
   REPORT(FecOut);
-  REPORT(SBdevYr);
-  REPORT(FBdevYr);
+  # REPORT(SFdevYr);
+  # REPORT(SBdevYr);
+  # REPORT(FBdevYr);
   REPORT(Influx);
   REPORT(AddV);
   REPORT(datalike);

@@ -292,8 +292,41 @@ ReadMixingData <- function(Code,DatFile,Yr1,Yr2,Nbreed,Nfeed,BreedNames,FeedName
 }
 
 # ===========================================================================================
+ReadGLORYS <- function(DatFile,FeedingOpt,YrStart=2000,YrEnd=2023){
+  envdat <- read_rds(here('data','processed covariates','glorys_anomalies_by_zone.rds'))
+  # pull the right timeseries for feeding grounds
+  which_feed <- which(DatFile[,1]=="Feeding_grounds" & DatFile[,2]==FeedingOpt)
+  Nfeed <- as.numeric(DatFile[which_feed,3])
+  FeedNames <- as.character(DatFile[which_feed+1,1:Nfeed])
+  sst <- envdat$sst |> 
+    mutate(zone=str_remove_all(zoneID,"_\\d*"))
+  sstL <- map(FeedNames,\(x){
+    ssti <- sst |> filter(zone==x,year>=YrStart,year<=YrEnd) |> 
+      pull(anom)
+    ssti
+  })
+  sstMat <- do.call(rbind,sstL)
+  
+  chl <- envdat$chl |> 
+    mutate(zone=str_remove_all(zoneID,"_\\d*"))
+  chlL <- map(FeedNames,\(x){
+    chli <- chl |> filter(zone==x,year>=YrStart,year<=YrEnd) |> 
+      pull(anom)
+    chli
+  })
+  chlMat <- do.call(rbind,chlL)
+  # fill zeroes
+  Outs <- list(
+    sst=sstMat,
+    chl=chlMat
+  )
+  Outs
+}
+
+# ===========================================================================================
 # Function to make a data list for a specific user-designated scenario
-MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,Yr1=1970,Yr2=2023,CatchSer="B",
+MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,Yr1=1970,Yr2=2023,
+                             YrSDevs=1993, CatchSer="B",envOpt="none",
                              ByCatchFile="BycatchActual_2024_04_24.csv",AddCV=T,MixWeights=c(1,1),
                              MaxN=100,SigmaDevS=6,SigmaDevF=0.01,WithMirror=1,
                              SF=c(0,1,0,1,1,1),IAmat=8,SA=0.96,SC=0.8,
@@ -360,43 +393,63 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
   ObsMixFtoBO <- OutsMix$ObsMixFtoBO
   NmixData <- OutsMix$NmixData
   
+  
   # ============================================================================================================================== 
   # Specify devs for survival and fecundity
+  # Make devs for survival and fecundity
+  # The form and inclusion of these will differ based on option "envOpt"
+  OutsEnv <- ReadGLORYS(DatFile,FeedingOpt,YrStart=YrSDevs,YrEnd = 2023) # list with sst and chl anomalies by year (YrSDevs to Yr2)
+  sst <- OutsEnv$sst
+  chl <- OutsEnv$chl
+  omega_sst <- 0 # initial coefficient for sst
+  omega_chl <- 0 # initial coefficient for chl
+  
+  # Set up the right survival matrices for the chosen scenario
   if (BreedingOpt=="B1")
   {
     SBdevEst <- c(0,1,1,0)
-    SBdevMat <- matrix(c(0,0,2000,Yr2,2000,Yr2,0,0),ncol=2,byrow=T)-Yr1
+    SBdevMat <- matrix(c(0,0,YrSDevs,Yr2,YrSDevs,Yr2,0,0),ncol=2,byrow=T)-Yr1
     FBdevEst <- c(0,0,0,0)
-    FBdevMat <- matrix(c(0,0,2000,Yr2,2000,Yr2,0,0),ncol=2,byrow=T)-Yr1
+    FBdevMat <- matrix(c(0,0,YrSDevs,Yr2,YrSDevs,Yr2,0,0),ncol=2,byrow=T)-Yr1
   }
   if (BreedingOpt=="B2")
   {
     SBdevEst <- c(0,1,0,1,0)
-    SBdevMat <- matrix(c(0,0,2000,Yr2,0,0,2000,Yr2,0,0),ncol=2,byrow=T)-Yr1
+    SBdevMat <- matrix(c(0,0,YrSDevs,Yr2,0,0,YrSDevs,Yr2,0,0),ncol=2,byrow=T)-Yr1
     FBdevEst <- c(0,0,0,0,0)
-    FBdevMat <- matrix(c(0,0,2000,Yr2,0,0,2000,Yr2,0,0),ncol=2,byrow=T)-Yr1
+    FBdevMat <- matrix(c(0,0,YrSDevs,Yr2,0,0,YrSDevs,Yr2,0,0),ncol=2,byrow=T)-Yr1
   }
   if (FeedingOpt=="F1" || FeedingOpt=="F2")
   {
-    Yrs <- c(2000,Yr2)
+    Yrs <- c(YrSDevs,Yr2)
     SFdevEst <- NULL
     SFdevMat <- matrix(0,nrow=Nfeed,ncol=2,byrow=T)
     for (Ifeed in 1:Nfeed)
-    { 
+    {
       SFdevEst <- c(SFdevEst,SF[Ifeed])
       if (SF[Ifeed]==1) SFdevMat[Ifeed,] <- Yrs-Yr1
     }
     FFdevEst <- c(0,0,0,0,0,0)
-    FFdevMat <- matrix(c(0,0,rep(c(2000,Yr2),5)),ncol=2,byrow=T)-Yr1
+    FFdevMat <- matrix(c(0,0,rep(c(YrSDevs,Yr2),5)),ncol=2,byrow=T)-Yr1
   }
-  
   # How many deviates to estimate (survival and fecundity, breeding and feeding grounds)
-  nBsdevs <- sum(SBdevEst)*length(2000:Yr2) #survival, breeding grounds
-  nBfdevs <- sum(FBdevEst)*length(2000:Yr2) #fecundity, breeding grounds
-  nFsdevs <- sum(SFdevEst)*length(2000:Yr2) #survival, feeding grounds
-  nFfdevs <- sum(FFdevEst)*length(2000:Yr2) #fecundity, feeding grounds
+  nBsdevs <- sum(SBdevEst)*length(YrSDevs:Yr2) #survival, breeding grounds
+  nBfdevs <- sum(FBdevEst)*length(YrSDevs:Yr2) #fecundity, breeding grounds
+  nFsdevs <- sum(SFdevEst)*length(YrSDevs:Yr2) #survival, feeding grounds
+  nFfdevs <- sum(FFdevEst)*length(YrSDevs:Yr2) #fecundity, feeding grounds
   
-  # Mirror devs between feeding grounds?
+  # Carrying capacity deviates
+  nKdevs <- Nfeed*length(YrSDevs:Yr2)
+  
+  if (nBfdevs==0) nBfdevs <- 1
+  if (nFfdevs==0) nFfdevs <- 1
+  SBdev <- rep(0,nBsdevs)
+  FBdev <- rep(0,nBfdevs)
+  SFdev <- rep(0,nFsdevs)
+  FFdev <- rep(0,nFfdevs)
+  Kdev <- rep(0.001,nKdevs)
+  
+  # Mirror devs between feeding grounds? (currently not used for environmentally-driven survival model)
   Nmirror <- 0
   Mirror <- matrix(0,nrow=2,ncol=2)
   if (WithMirror==1)
@@ -412,7 +465,6 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
     Mirror[2,1] <- 6; Mirror[2,2] <- 5;
     Mirror <- Mirror-1
   }
-  
   # Set up additional variances
   NextraCV <- ifelse(NextraCV1==0,1,NextraCV1)
   AddV=rep(0,NextraCV)
@@ -430,12 +482,6 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
     for (Ifeed in 1:Nfeed) if (MixI[Ibreed,Ifeed]!=0 && Ifeed!=Iref) MixPars <- c(MixPars,log(Temp[Ifeed]/Temp[Iref]))
   }
   
-  # Survival and fecundity devs
-  if (nBfdevs==0) nBfdevs <- 1
-  if (nFfdevs==0) nFfdevs <- 1
-  SBdev <- rep(0,nBsdevs);FBdev <- rep(0,nBfdevs);
-  SFdev <- rep(0,nFsdevs);FFdev <- rep(0,nFfdevs);
-  
   # ==============================================================================================================================
   ## List of parameters for TMB to estimate
   parameters <- list(rval=0.07, # Maximum growth rate
@@ -445,14 +491,35 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
                      inert_par=0, # related to fecundity calculation
                      MixPars=MixPars, # parameters of the mixing matrix
                      AddV=AddV, # additional variance parameters for three time-series
+                     omega_sst = omega_sst, # coefficient on the sst timeseries affecting survival
+                     omega_chl = omega_chl, # coefficent on the chl timeseries affecting survival
                      Sigma_SBdev=SigmaDevS, SBdev=SBdev, # survival devs, breeding grounds
                      Sigma_FBdev=SigmaDevF, FBdev=FBdev, # fecundity devs, breeding grounds
-                     Sigma_SFdev=SigmaDevS, SFdev=SFdev, # survival devs, feeding grounds
+                     Sigma_SFdev=SigmaDevS,
+                     SFdev=SFdev, # survival devs, feeding grounds
+                     Kdev = Kdev, # carrying capacity devs, feeding grounds
                      Sigma_FFdev=SigmaDevF, FFdev=FFdev) # fecundity devs, feeding grounds
+  
+  # If driving survival without environment, remove omegas from parameter list
+  if(envOpt=="none"){
+    parameters$omega_sst <- parameters$omega_chl <- parameters$Kdev <- NULL
+  }
+  
+  # If driving survival directly with environment, remove SFdevs from parameter list
+  if(envOpt=="direct"){
+    parameters$SFdev <- NULL
+    parameters$Sigma_SFdev <- NULL
+    parameters$Kdev <- NULL
+  }
+  if(envOpt=="index"){
+    parameters$Sigma_SFdev <- NULL
+    parameters$Kdev <- NULL
+  }
+  
   
   # Fixing parameters
   # factor(NA) means DON'T ESTIMATE THIS, USE FIXED PARAM
-  # These will go into estimation at their INITIAL VALUES
+  # These will go into estimation at their INITIAL VALUES and will not change
   mapv1=list(#rval=factor(NA),#logBK=rep(factor(NA),Nbreed),
     InfluxP=factor(NA),
     inert_par=factor(NA),
@@ -467,14 +534,22 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
     InfluxP=factor(NA),
     inert_par=factor(NA),
     Sigma_SBdev=factor(NA),
-    #Sigma_SBdev=factor(NA),SBdev=rep(factor(NA),length(SBdev)),
+    Sigma_SBdev=factor(NA),SBdev=rep(factor(NA),length(SBdev)),
     Sigma_FBdev=factor(NA),FBdev=rep(factor(NA),length(FBdev)),
-    #Sigma_SFdev=factor(NA),
     Sigma_SFdev=factor(NA),SFdev=rep(factor(NA),length(SFdev)),
     Sigma_FFdev=factor(NA),FFdev=rep(factor(NA),length(FFdev))
   )
-  if (StochSopt==0) map <- mapv2
+  mapv3=list(#rval=factor(NA),#logBK=rep(factor(NA),Nbreed),
+    InfluxP=factor(NA),
+    inert_par=factor(NA),
+    Sigma_SBdev=factor(NA),SBdev=rep(factor(NA),length(SBdev)),
+    Sigma_FBdev=factor(NA),FBdev=rep(factor(NA),length(FBdev)),
+    #Sigma_SFdev=factor(NA),SFdev=rep(factor(NA),length(SFdev)),
+    Sigma_FFdev=factor(NA),FFdev=rep(factor(NA),length(FFdev))
+  )
   if (StochSopt==1) map <- mapv1
+  if (StochSopt==0 | envOpt=="varK") map <- mapv2
+  if (envOpt=="direct"|envOpt=="index") map <- mapv3
   if (AddCV==F) map$AddV <- rep(factor(NA),length(AddV))
   
   # ==============================================================================================================================
@@ -486,6 +561,7 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
                  FeedNames=FeedNames,
                  Yr1=Yr1,
                  Yr2=Yr2,
+                 YrSDevs=YrSDevs,
                  Years=Years,
                  IAmat=IAmat,
                  SA=SA,
@@ -496,6 +572,11 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
                  NextraCV1 = NextraCV1,
                  CatchB=CatchB,
                  CatchF=CatchF,
+                 sst=sst,
+                 chl=chl,
+                 omega_sst = omega_sst,
+                 omega_chl = omega_chl,
+                 SF=SF,
                  SBdevEst=SBdevEst,
                  SBdevMat=SBdevMat,
                  FBdevEst=FBdevEst,

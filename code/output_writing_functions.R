@@ -1,11 +1,15 @@
 # ==========================================================================================
-
-WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,StockDef,data)
+require(lubridate)
+require(here)
+WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,StockDef,data,subdir="")
 {
   
+  # create file directory if it does not exist yet
+  fildir <- here("Diags",subdir)
+  if(!dir.exists(fildir)) dir.create(fildir)
   # save data and rept as rds for easier access to plotting later
   outs <- list(input=data,report=rept,sdreport=rep,sdfixed=rep2)
-  readr::write_rds(outs,paste0("Diags/",Code,Abbrev,".rds"))
+  readr::write_rds(outs,paste0(fildir,"/",Code,Abbrev,".rds"))
   
   ### Write out relevant information into a basic text file
   Nyear <- Yr2-Yr1+1
@@ -13,7 +17,8 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   Nbreed <- length(BreedNames)
   Nfeed <- length(FeedNames)
   
-  FileName <- paste0("Diags/",Code,Abbrev,".Out")
+  FileName <- here("Diags",subdir,paste0(Code,Abbrev,".Out"))
+  
   write(paste0("Stock structure: ",Code,"; Model type = ",Abbrev),FileName)
   if (StockDef$StochSopt==0) write("Mortality impacts breeding stocks",FileName,append=T)
   if (StockDef$StochSopt==1) write("Mortality impacts feeding grounds",FileName,append=T)
@@ -21,7 +26,7 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   if (StockDef$DensDepOpt==1) write("Recruitment related to unfished and current",FileName,append=T)
   write(paste0("Straying rate: ",StockDef$StrayBase),FileName,append=T)
   write(paste0("Age-at-maturity: ",StockDef$IAmat),FileName,append=T)
-  write(paste0("Base adult survival: ",StockDef$TimeLag),FileName,append=T)
+  write(paste0("Base adult survival: ",StockDef$SA),FileName,append=T)
   if (StockDef$WithMirror) write("Mirrored survival",FileName,append=T)
   write(paste0("Sigma for survival devs: ",StockDef$SigmaDevS),FileName,append=T)
   if (StockDef$AddCV) write("Additional variance estimated",FileName,append=T)

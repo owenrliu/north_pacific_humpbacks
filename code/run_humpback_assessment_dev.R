@@ -4,8 +4,6 @@ library(here)
 # ========================================================================================
 
 # all the functions we need
-source(here('code','humpback_assessment_model_dev.R'))
-# source(here('code','humpback_assessment_model.R'))
 source(here('code',"data_reading_functions_dev.R"))
 # source(here('code',"data_reading_functions.R"))
 source(here('code',"output_writing_functions.R"))
@@ -33,28 +31,36 @@ UseKPrior <- 1
 
 # FUNCTION THAT ACTUALLY FITS THE ASSESSMENT MODEL
 DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
-                  SF=c(0,1,0,1,1,1),SigmaDevS=6,SigmaDevF=0.01,WithMirror=0,Yr1=1970,Yr2=2023,
-                  AddCV=T,MixWeights=c(1,1),CatchSer="B",AllPlots=F,DoBoot=F,
+                  SF=c(0,1,0,1,1,1),SigmaDevS=6,SigmaDevF=0.01,WithMirror=0,Yr1=1970,Yr2=2023,YrSDevs=1995,
+                  AddCV=T,MixWeights=c(1,1),CatchSer="B",envOpt="none",
+                  AllPlots=F,DoBoot=F,
                   ByCatchFile="BycatchActual_2024_04_24.csv",
                   WghtTotal=1,Idirichlet=1,MaxN=100,seed=19101,
-                  BootUse,SetNew=0,Init=NULL)
+                  BootUse,SetNew=0,Init=NULL,subdir="")
 {
   
   cat("Doing ",paste0(Code,"-",SensCase)," using data file ",DataFileName,"\n")
   
   dat <- MakeDataScenario(Code=Code,SensCase=SensCase,StochSopt=StochSopt,StrayBase=StrayBase,
-                          DataFileName=DataFileName,Yr1=Yr1,Yr2=Yr2,CatchSer=CatchSer,
-                          ByCatchFile=ByCatchFile,MixWeights=MixWeights,MaxN=MaxN,SF=SF,
-                          WithMirror=WithMirror,IAmat=IAmat,SA=SA,SC=SC,
+                          DataFileName=DataFileName,Yr1=Yr1,Yr2=Yr2,YrSDevs=YrSDevs,CatchSer=CatchSer,
+                          envOpt=envOpt,ByCatchFile=ByCatchFile,AddCV=AddCV,MixWeights=MixWeights,
+                          MaxN=MaxN,SF=SF,WithMirror=WithMirror,IAmat=IAmat,SA=SA,SC=SC,
                           TimeLag=TimeLag,DensDepOpt=DensDepOpt,WghtTotal=WghtTotal)
   list2env(dat, envir = environment()) # make the data objects available to this function
   #print(str(data))
+  
+  # source the correct model code, depending on "envOpt"
+  # i.e., choice about how to drive survival with environmental variables
+  if(envOpt== 'none') source(here('code','humpback_assessment_model.R'))
+  if(envOpt== 'direct') source(here('code','humpback_assessment_model_envDirect.R'))
+  if(envOpt== 'index') source(here('code','humpback_assessment_model_envIndex.R'))
+  if(envOpt== 'varK') source(here('code','humpback_assessment_model_varK.R'))
 
   
   ################################################################################
   if (FullDiag==T) print("Calling MakeADM")
   model <- MakeADFun(cmb(f,dat), parameters, map=map,DLL="Hump",silent=T)
-  rept <- model$report()
+  prefit <- model$report()
   #print(rept$neglogL)
   
   # Iterate to get convergence (usually not needed)
@@ -105,6 +111,7 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,T
   }
   
   # Extract output
+  rept <- model$report()
   best <- model$env$last.par.best
   stdreport <-sdreport(model)
   rep <- summary(stdreport)
@@ -139,26 +146,29 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,T
   StockDef$AddCV <- AddCV
   StockDef$MixWeights <- MixWeights
   
-  # Print outs and graphs
+  # Print outs and plots
+  
   WriteOut(Code,Abbrev=SensCase,Yr1=Yr1,Yr2=Yr2,BreedNames=BreedNames,FeedNames=FeedNames,
-           rept=rept,rep=rep,rep2=rep2,StockDef=StockDef,data=dat)
+           rept=rept,rep=rep,rep2=rep2,StockDef=StockDef,data=dat,subdir = subdir)
   
   if(AllPlots){
     obj <- list(input=dat,report=rept,sdreport=rep,sdfixed=rep2)
-    plot_title <- paste0(Code,"-",SensCase)
+    fildir <- here("plots",subdir)
+    if(!dir.exists(fildir)) dir.create(fildir)
+    plot_title <- paste0(fildir,"/",Code,"-",SensCase)
     p1 <- plot_abundance(obj=obj,opt = "total")
     p2 <- plot_abundance(obj=obj,opt= "breed")
     p3 <- plot_abundance(obj=obj,opt="feed")
     p4 <- plot_proportions(obj,direction="B-F")
     p5 <- plot_proportions(obj,direction="F-B")
     p6 <- plot_survival(obj,opt="F")
-    ggsave(here('plots',paste(plot_title,"total abundance.png")),p1,height=4,width=6)
-    ggsave(here('plots',paste(plot_title,"breeding ground abundance.png")),p2,height=6,width=8)
-    ggsave(here('plots',paste(plot_title,"feeding ground abundance.png")),p3,height=6,width=8)
-    ggsave(here('plots',paste(plot_title,"proportions breed to feed.png")),p4,height=5,width=10)
-    ggsave(here('plots',paste(plot_title,"proportions feed to breed.png")),p5,height=5,width=10)
-    ggsave(here('plots',paste(plot_title,"feeding ground survival.png")),p6,height=6,width=8)
-    png(here('plots',paste(plot_title,"mixing.png")),width = 1000,height=1000,units='px')
+    ggsave(paste(plot_title,"total abundance.png"),p1,height=4,width=6)
+    ggsave(paste(plot_title,"breeding ground abundance.png"),p2,height=6,width=8)
+    ggsave(paste(plot_title,"feeding ground abundance.png"),p3,height=6,width=8)
+    ggsave(paste(plot_title,"proportions breed to feed.png"),p4,height=5,width=10)
+    ggsave(paste(plot_title,"proportions feed to breed.png"),p5,height=5,width=10)
+    ggsave(paste(plot_title,"feeding ground survival.png"),p6,height=6,width=8)
+    png(paste(plot_title,"mixing.png"),width = 1000,height=1000,units='px')
     plot_mixing(obj=obj)
     dev.off()
   }
@@ -299,6 +309,19 @@ Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames
 }
 # ==========================================================================================
 # THIS IS WHERE ALL THE ACTION HAPPENS- ACTUALLY RUN THE MODEL
+###################################################################################################
+### TESTING ZONE
+# Base model (no environmental drivers, with mirroring of survival
+xx <- DoRun("B2F2",SF=c(0,1,0,1,1,1),YrSDevs=2000,WithMirror = 1,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt="none",subdir="B2F2 base")
+# Base model, direct driving of survival
+xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='direct',subdir="B2F2 direct")
+# Base model, environmental index of survival
+xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='index',subdir="B2F2 index")
+
+# Variable K model?
+xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='varK',subdir="B2F2 varK")
+
+###################################################################################################
 # Select the case for the analysis
 Case <- 1
 
@@ -306,7 +329,7 @@ Case <- 1
 if (Case==1)
 {
   #xx <- DoRun("B1F1",SensCase="BC",AllPlots=F,DoBoot=F,Init=best,SetNew=1)
-  xx <- DoRun("B2F2",SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
+  xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
   #save(xx,file="D:\\sav2.sav")
   #DoRun("B2F2",SensCase="BC",AllPlots=T,DoBoot=T)
 }

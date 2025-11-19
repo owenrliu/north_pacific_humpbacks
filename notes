@@ -1,0 +1,14 @@
+Notes and run log
+
+# Base case and testing runs
+# Trying to get environmental drivers to work
+
+11/4/25 Got different versions of the index model working. Not sure quite how to parse them
+
+11/10 finished 3 versions- base, environmental direct, environmental index
+Trying to plot raw survey data on top of model estimates
+
+11/19 working on a variable K version of the model with "Kdevs" parameterized
+similarly to SFdevs. For now, working iwth same parameter "YrSDevs" which determines
+the year where deviations can begin
+Trying to plot survival curve
