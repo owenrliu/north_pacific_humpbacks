@@ -175,7 +175,42 @@ plot_survival_curve <- function(obj,opt="F"){
     facet_wrap(~zone)
   cowplot::plot_grid(psst,pchl,nrow=2)
 }
-    
+
+# ------------------------------------------------------------------------------------
+# Plot estimated K timeseries, for models with time-varying K
+plot_survival <- function(obj,opt="F"){
+  
+  # fitted data
+  kdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(grepl('Kdev',param))
+  feedk <- obj$report$FeedK
+  yrs <- pluck(obj,"input","Years")
+  yrs <- yrs[-length(yrs)] #remove the last year because there's no survival calculated
+  numyr <- length(yrs)
+  
+  # names
+  zn <- pluck(obj,'input','FeedNames') |> as.character()
+  numz <- length(zn)
+  feedk <- tibble(zone=zn,feedk=feedk)
+  
+  ydevs <- pluck(obj,"input","YrSDevs")
+  kdat <- kdat |> 
+    mutate(year=rep(ydevs:max(yrs),each=numz))|> 
+    mutate(zone=rep(zn,length(ydevs:max(yrs)))) |> 
+    set_names(c("param","multK","sd.multK","year","zone")) |>
+    left_join(feedk,by=join_by(zone)) |> 
+    mutate(multK=multK+1) |> 
+    mutate(upper.multK=multK+1.96*sd.multK,lower.multK=multK-1.96*sd.multK) |> 
+    mutate(varK=multK*feedk,upper=upper.multK*feedk,lower=lower.multK*feedk)
+  
+  p <- kdat |> 
+    ggplot(aes(year,varK,ymin=lower,ymax=upper))+
+    geom_ribbon(fill="lightblue")+
+    geom_line()+
+    labs(x="Year",y="K")+
+    facet_wrap(~zone)
+  p
+}
+
 # ------------------------------------------------------------------------------------
 # Plot index of abundance
 # Right now this just plots output from one scenario. We'll write another to compare scenarios

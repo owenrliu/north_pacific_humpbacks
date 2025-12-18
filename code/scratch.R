@@ -39,4 +39,5 @@ fit$par
 model$gr(fit$par)
 
 ### Pulling a result
-obj <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))
+obj <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
+sdr <- obj$sdfixed

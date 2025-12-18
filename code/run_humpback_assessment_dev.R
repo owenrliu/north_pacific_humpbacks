@@ -27,7 +27,7 @@ Prior_int <- Y2 - Prior_slope*K2
 #cat(Prior_slope,Prior_int,"\n")
 Priors <- 1.0/(1+exp(Prior_int+Prior_slope*Ks))
 
-UseKPrior <- 1
+UseKPrior <- 0
 
 # FUNCTION THAT ACTUALLY FITS THE ASSESSMENT MODEL
 DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
@@ -319,7 +319,7 @@ xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoB
 xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='index',subdir="B2F2 index")
 
 # Variable K model?
-xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='varK',subdir="B2F2 varK")
+xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 2000,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='varK',subdir="B2F2 varK")
 
 ###################################################################################################
 # Select the case for the analysis
