@@ -50,11 +50,16 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,T
   #print(str(data))
   
   # source the correct model code, depending on "envOpt"
-  # i.e., choice about how to drive survival with environmental variables
-  if(envOpt== 'none') source(here('code','humpback_assessment_model.R'))
-  if(envOpt== 'direct') source(here('code','humpback_assessment_model_envDirect.R'))
-  if(envOpt== 'index') source(here('code','humpback_assessment_model_envIndex.R'))
-  if(envOpt== 'varK') source(here('code','humpback_assessment_model_varK.R'))
+  # i.e., choice about how to drive survival with environmental variables  
+  if(envOpt== 'none') source(here('code','full age structure','base.R'))
+  # if(envOpt== 'direct') source(here('code','humpback_assessment_model_envDirect.R'))
+  # if(envOpt== 'index') source(here('code','humpback_assessment_model_envIndex.R'))
+  # if(envOpt== 'varK') source(here('code','humpback_assessment_model_varK.R'))
+  
+  # if(envOpt== 'none') source(here('code','humpback_assessment_model.R'))
+  # if(envOpt== 'direct') source(here('code','humpback_assessment_model_envDirect.R'))
+  # if(envOpt== 'index') source(here('code','humpback_assessment_model_envIndex.R'))
+  # if(envOpt== 'varK') source(here('code','humpback_assessment_model_varK.R'))
 
   
   ################################################################################
@@ -161,13 +166,16 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,IAmat=8,SA=0.96,SC=0.8,T
     p3 <- plot_abundance(obj=obj,opt="feed")
     p4 <- plot_proportions(obj,direction="B-F")
     p5 <- plot_proportions(obj,direction="F-B")
-    p6 <- plot_survival(obj,opt="F")
     ggsave(paste(plot_title,"total abundance.png"),p1,height=4,width=6)
     ggsave(paste(plot_title,"breeding ground abundance.png"),p2,height=6,width=8)
     ggsave(paste(plot_title,"feeding ground abundance.png"),p3,height=6,width=8)
     ggsave(paste(plot_title,"proportions breed to feed.png"),p4,height=5,width=10)
     ggsave(paste(plot_title,"proportions feed to breed.png"),p5,height=5,width=10)
-    ggsave(paste(plot_title,"feeding ground survival.png"),p6,height=6,width=8)
+    if(envOpt=="varK"){
+      p6 <- plot_survival(obj,opt="F")
+      ggsave(paste(plot_title,"feeding ground survival.png"),p6,height=6,width=8)
+    }
+    
     png(paste(plot_title,"mixing.png"),width = 1000,height=1000,units='px')
     plot_mixing(obj=obj)
     dev.off()
@@ -312,7 +320,7 @@ Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames
 ###################################################################################################
 ### TESTING ZONE
 # Base model (no environmental drivers, with mirroring of survival
-xx <- DoRun("B2F2",SF=c(0,1,0,1,1,1),YrSDevs=2000,WithMirror = 1,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt="none",subdir="B2F2 base")
+xx <- DoRun("B2F2",SF=c(0,1,0,1,1,1),YrSDevs=2000,WithMirror = 1,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt="none",subdir="B2F2 FAbase")
 # Base model, direct driving of survival
 xx <- DoRun("B2F2",SF=c(1,1,1,1,1,1),YrSDevs = 1993,SensCase="BC",AllPlots=T,DoBoot=F,Init=NULL,SetNew=0,envOpt='direct',subdir="B2F2 direct")
 # Base model, environmental index of survival

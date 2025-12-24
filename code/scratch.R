@@ -24,13 +24,14 @@ test2 %>% ggplot(aes(eps,Sout,color=ordered(S)))+geom_line(linewidth=1.25)+theme
 
 
 #######################
+# Run all this to seed the DoRun function
 Code="B2F2";SensCase="BC";StochSopt=1;StrayBase=0;IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
 SF=c(1,1,1,1,1,1); YrSDevs=1995;
 SigmaDevS=6;SigmaDevF=0.01;WithMirror=1;Yr1=1970;Yr2=2023;
 AddCV=F;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
 ByCatchFile="BycatchActual_2024_04_24.csv";
 WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
-SetNew=0;Init=NULL; envOpt="varK"
+SetNew=0;Init=NULL; envOpt="none"
 
 
 #### 
@@ -41,3 +42,16 @@ model$gr(fit$par)
 ### Pulling a result
 obj <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
 sdr <- obj$sdfixed
+
+
+### Comparing results
+
+obj1 <- read_rds(here('Diags','B2F2 base','B2F2BC.rds'))
+obj2 <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))
+obj3 <- read_rds(here('Diags','B2F2 varK','B2F2BC.rds'))
+obj4 <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
+objlist <- list(obj1,obj4,obj2,obj3)
+scen.names <- c("Base","Direct","Index","VarK")
+objlist <- list(obj1,obj4,obj2,obj3)
+scen.names <- c("Base","Direct","Index","VarK")
+plot_compare_abundance(objlist,scen.names)

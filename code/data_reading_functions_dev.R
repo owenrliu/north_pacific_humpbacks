@@ -556,7 +556,6 @@ MakeDataScenario <- function(Code,SensCase,StochSopt=1,StrayBase=0,DataFileName,
   # Return a big list of data for the model
   datout <- list(Nbreed=Nbreed, 
                  Nfeed=Nfeed,
-                 Nyear=Nyear,
                  BreedNames=BreedNames,
                  FeedNames=FeedNames,
                  Yr1=Yr1,
