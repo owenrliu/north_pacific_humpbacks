@@ -50,10 +50,11 @@ ReadCatches <- function(DatFile,BreedingOpt,FeedingOpt,Nbreed,Nfeed,BreedNames,F
 ReadSurveyData <- function(Code,BreedingOpt,FeedingOpt,BreedNames,FeedNames,Yr1,Yr2,SensTest="")
  {
 
-  Surveys <- read.csv("Inputs/SurveyAll.duringWorkshop1.csv",fill=T,comment.char="?",header=T,row.names=NULL)[,1:12]
-  colnames <- c("Year1","Year2","Estimate","CV","Area","Rel","Use","Add.cv","Hypothesis","Class","SensUse","Reference")
+  Surveys <- read.csv("Inputs/SurveyAll.duringWorkshop1.csv",fill=T,comment.char="?",header=T,row.names=NULL)[,1:13]
+  colnames <- c("Year1","Year2","Estimate","CV","Area","Rel","Use","Add.cv","Hypothesis","Class","SensUse","Component","Reference")
   colnames(Surveys) <- colnames
   #print(head(Surveys))
+  
   if (FullDiag==T) cat("Initial number of lines",length(Surveys[,1]),"\n")
 
   # Extract the surveys to use
@@ -78,6 +79,7 @@ ReadSurveyData <- function(Code,BreedingOpt,FeedingOpt,BreedNames,FeedNames,Yr1,
   Surveys$Estimate <- as.numeric(Surveys$Estimate)
   Surveys$CV <- as.numeric(Surveys$CV)
   Surveys$Add.cv <- as.numeric(Surveys$Add.cv)
+  Surveys$Comp <- as.numeric(Surveys$Component)
   
   # Now process the data
   NextraCV1 <- 0
@@ -91,7 +93,7 @@ ReadSurveyData <- function(Code,BreedingOpt,FeedingOpt,BreedNames,FeedNames,Yr1,
     if (Type != -1)
     {
       if (Surveys$Add.cv[Iline] > NextraCV1) NextraCV1 <- Surveys$Add.cv[Iline]
-      Vec1 <- c(Surveys$Year1[Iline]-Yr1,Surveys$Year2[Iline]-Yr1,Type,Area,Surveys$Class[Iline]-1,1,Surveys$Add.cv[Iline])
+      Vec1 <- c(Surveys$Year1[Iline]-Yr1,Surveys$Year2[Iline]-Yr1,Type,Area,Surveys$Class[Iline]-1,1,Surveys$Add.cv[Iline],Surveys$Component[Iline])
       Vec2 <- c(Surveys$Estimate[Iline],Surveys$CV[Iline])
       SurveyI <- rbind(SurveyI,Vec1);SurveyR <- rbind(SurveyR,Vec2);
     }
@@ -102,8 +104,9 @@ ReadSurveyData <- function(Code,BreedingOpt,FeedingOpt,BreedNames,FeedNames,Yr1,
       AAAA
     }
   }
-  colnames(SurveyI) <- c("Year1","Year2","Type","Area","Class","?","Add.cv")
-  
+  colnames(SurveyI) <- c("Year1","Year2","Type","Area","Class","?","Add.cv","Component")
+  #print(head(SurveyI))
+
   NsurveyData <- length (SurveyI[,1])
   # Number of survey series
   NsurveySeries <- length(unique(SurveyI[,5]))

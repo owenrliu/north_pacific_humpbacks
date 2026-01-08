@@ -164,16 +164,16 @@ plot_survival_curve <- function(obj,opt="F"){
   
   psst <- sdat |> 
     ggplot(aes(sst,survival))+
-    geom_text(aes(label=year,color=year),size=4)+
-    geom_arrow_chain(color='gray80',linewidth=0.75,arrow_head="head_wings")+
+    geom_text(aes(label=year,color=year),size=2)+
+    geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
     labs(x="SST",y="Survival")+
     scale_color_viridis()+
     facet_wrap(~zone)
   pchl <- sdat |> 
     ggplot(aes(chl,survival))+
     # geom_point(aes(color=year))+
-    geom_text(aes(label=year,color=year),size=4)+
-    geom_arrow_chain(color='gray80',linewidth=0.75,arrow_head="head_wings")+
+    geom_text(aes(label=year,color=year),size=2)+
+    geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
     labs(x="Chlorophyll",y="Survival")+
     scale_color_viridis()+
     facet_wrap(~zone)
@@ -182,7 +182,7 @@ plot_survival_curve <- function(obj,opt="F"){
 
 # ------------------------------------------------------------------------------------
 # Plot estimated K timeseries, for models with time-varying K
-plot_survival <- function(obj,opt="F"){
+plot_varK <- function(obj){
   
   # fitted data
   kdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(grepl('Kdev',param))
@@ -241,9 +241,9 @@ plot_abundance <- function(obj,opt="total"){
   hyp <- c(hyp,"All")
   
   # get raw survey data
-  Surveys <- read.csv(here('data',"SurveyAll.duringWorkshop1.csv"),fill=T,comment.char="?",header=T,row.names=NULL)[,1:12]
-  colnames <- c("Year1","Year2","Estimate","CV","Area","Rel","Use","Add.cv","Hypothesis","Class","SensUse","Reference")
-  colnames(Surveys) <- colnames
+  Surveys <- read_csv(here('Diags','SurveyUse',paste0(obj$Code,obj$SensCase,".csv")),show_col_types = F)
+  # colnames <- c("Year1","Year2","Estimate","CV","Area","Rel","Use","Add.cv","Hypothesis","Class","SensUse","Reference")
+  # colnames(Surveys) <- colnames
   # survey bias for scaling
   Qvec <- obj$report$Qest
   Qvec[1] <- 1
@@ -258,32 +258,40 @@ plot_abundance <- function(obj,opt="total"){
            rescaled.lower=q*(Estimate-sd.estimate))
   
   if(opt=="total") {
+    # As of Dec 2025, LogNT should be re-formed into a 3x(Nyr+1)
     d <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="LogNT")
     d <- d |> 
-      mutate(year=as.integer(yrs)) |> 
-      set_names(c("param","total.ln","sd.abun","year")) |> 
+      mutate(year=rep(as.integer(yrs),each=3),component=rep(c("1+","2+","Mature"),numyr)) |> 
+      set_names(c("param","total.ln","sd.abun","year","component")) |> 
       mutate(total=exp(total.ln)) |> 
       mutate(upper=exp(total.ln+1.96*sd.abun),lower=exp(total.ln-1.96*sd.abun))
     surv <- survd |> filter(Area=="Total")
     d <- d |> left_join(surv,by=join_by(year))
     p <- d |> 
+      filter(year<max(year)) |> 
       ggplot()+
-      geom_ribbon(aes(year,total,ymax=upper,ymin=lower),fill='lightblue')+
-      geom_line(aes(year,total))+
+      geom_ribbon(aes(year,total,ymax=upper,ymin=lower,group=component,fill=component),alpha=0.5)+
+      geom_line(aes(year,total,color=component))+
       geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower),
                       linetype=2,size=0.5)+
-      labs(x="Year",y="Total Abundance")
+      labs(x="Year",y="Total Abundance",color="Component",fill="Component")
   }
   if(opt=='breed'){
+    # As of Dec 2025, LogNb is an array (3+NbreedxNyr+1), so we have to 
+    # invert the way that TMB made LogNb into a long vector
     d <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="LogNb")
     zn <- pluck(obj,'input','BreedNames') |> as.character()
     numz <- length(zn)
     
     d <- d |> 
-      mutate(year=rep(yrs,each=numz)) |> 
-      mutate(zone=rep(zn,numyr)) |> 
+      # make sure to check this dimensioning
+      mutate(year=rep(yrs,each=numz*3)) |> 
+      mutate(zone=rep(rep(zn,each=3),numyr)) |>
+      mutate(component=rep(1:3,numyr*numz)) |> 
+      # for now, just filter for all 1+
+      filter(component==1) |> 
       mutate(year=as.integer(year)) |> 
-      set_names(c("param","ln.abun","sd.abun","year","zone")) |> 
+      set_names(c("param","ln.abun","sd.abun","year","zone","component")) |> 
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
     
@@ -291,6 +299,7 @@ plot_abundance <- function(obj,opt="total"){
     d <- d |> left_join(surv,by=join_by(year,zone==Area))
     
     p <- d |> 
+      filter(year<max(year)) |> 
       ggplot()+
       geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
       geom_line(aes(year,abun))+
@@ -306,16 +315,21 @@ plot_abundance <- function(obj,opt="total"){
     numz <- length(zn)
     
     d <- d |> 
-      mutate(year=rep(yrs,each=numz)) |> 
-      mutate(zone=rep(zn,numyr)) |> 
+      # make sure to check this dimensioning
+      mutate(year=rep(yrs,each=numz*3)) |> 
+      mutate(zone=rep(rep(zn,each=3),numyr)) |>
+      mutate(component=rep(1:3,numyr*numz)) |> 
+      # for now, just filter for all 1+
+      filter(component==1) |> 
       mutate(year=as.integer(year)) |> 
-      set_names(c("param","ln.abun","sd.abun","year","zone")) |> 
+      set_names(c("param","ln.abun","sd.abun","year","zone","component")) |> 
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
     surv <- survd |> filter(Area%in%unique(d$zone))
     d <- d |> left_join(surv,by=join_by(year,zone==Area))
     
-    p <- d |> 
+    p <- d |>
+      filter(year<max(year)) |> 
       ggplot()+
       geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
       geom_line(aes(year,abun))+
@@ -346,12 +360,12 @@ plot_abundance <- function(obj,opt="total"){
 # objlist <- list(obj1,obj2,obj3,obj4)
 # scen.names <- c("B1F1","B2F1","B1F2","B2F2")
 
-obj1 <- read_rds(here('Diags','B2F2 base','B2F2BC.rds'))
-obj2 <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))
-obj3 <- read_rds(here('Diags','B2F2 varK','B2F2BC.rds'))
-obj4 <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
-objlist <- list(obj1,obj4,obj2,obj3)
-scen.names <- c("Base","Direct","Index","VarK")
+# obj1 <- read_rds(here('Diags','B2F2 base','B2F2BC.rds'))
+# obj2 <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))
+# obj3 <- read_rds(here('Diags','B2F2 varK','B2F2BC.rds'))
+# obj4 <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
+# objlist <- list(obj1,obj4,obj2,obj3)
+# scen.names <- c("Base","Direct","Index","VarK")
 
 plot_compare_abundance <- function(objlist,scen.names,opt="total"){
   yrs <- pluck(objlist,1,"input","Years")

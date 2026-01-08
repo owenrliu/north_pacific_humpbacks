@@ -2,12 +2,8 @@
 
 WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,StockDef,data)
 {
-  
-  # save rept as rds for easier access to plotting later
-  readr::write_rds(rept,paste0("Diags/",Code,Abbrev,".rds"))
-  
-  ### Write out relevant information into a basic text file
   Nyear <- Yr2-Yr1+1
+  Nage <- data$Nage
   
   Nbreed <- length(BreedNames)
   Nfeed <- length(FeedNames)
@@ -18,8 +14,8 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   if (StockDef$StochSopt==1) write("Mortality impacts feeding grounds",FileName,append=T)
   if (StockDef$DensDepOpt==0) write("Recuitment related to unfished",FileName,append=T)
   if (StockDef$DensDepOpt==1) write("Recuitment related to unfished and current",FileName,append=T)
-  write(paste0("Straying rate: ",StockDef$StrayBase),FileName,append=T)
-  write(paste0("Age-at-maturity: ",StockDef$IAmat),FileName,append=T)
+  write(paste0("Staying rate: ",StockDef$StrayBase),FileName,append=T)
+  write(paste0("Age-at-matrity: ",StockDef$IAmat),FileName,append=T)
   write(paste0("Base adult survival: ",StockDef$TimeLag),FileName,append=T)
   if (StockDef$WithMirror) write("Mirrored survival",FileName,append=T)
   write(paste0("Sigma for survival devs: ",StockDef$SigmaDevS),FileName,append=T)
@@ -98,8 +94,10 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
     write(c("Year",unlist(FeedNames)),FileName,append=T,ncol=Nfeed+1)
     for (Iyr in Yr1:(Yr2+1))
     {
-      xx <- c(Iyr,round(rept$NN[Ibreed,,Iyr-Yr1+1]/sum(rept$NN[Ibreed,,Iyr-Yr1+1]),5))
-      write(xx,FileName,append=T,ncol=Nfeed+1)
+     Vec1 <- rep(0,Ifeed)
+     for (Ifeed in Nfeed) Vec1[Ifeed] <- rept$NNN[Ibreed,Ifeed,Iyr-Yr1+1,1:Nage]
+     xx <- c(Iyr,round(Vec1/sum(Vec1),5))
+     write(xx,FileName,append=T,ncol=Nfeed+1)
     }
   }
   
@@ -134,7 +132,9 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
     write(c("Year",unlist(FeedNames)),FileName,append=T,ncol=Nfeed+1)
     for (Iyr in Yr1:Yr2)
     {
-      xx <- c(Iyr,round(rept$NN[Ibreed,,Iyr-Yr1+1],0))
+      Vec1 <- rep(0,Ifeed)
+      for (Ifeed in Nfeed) Vec1[Ifeed] <- rept$NNN[Ibreed,Ifeed,Iyr-Yr1+1,1:Nage]
+      xx <- c(Iyr,round(Vec1,0))
       write(xx,FileName,append=T,ncol=Nfeed+1)
     }
   }

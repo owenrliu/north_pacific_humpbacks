@@ -103,7 +103,7 @@ PlotPropns <- function(Nprop,ObsMixPropI,ObsMixProp,PredMix,PDF=T,Code="No model
 
 # ------------------------------------------------------------------------------------
 
-PlotIndex <- function(SurveyD,LogNT,LogNb,LogNf,Qest,PDF=T,Code="No model",BreedNames,FeedNames,Nyear,Years,Yr1,Yr2,Nbreed,Nfeed,rept,AllPlots)
+PlotIndex <- function(SurveyD,Nt.est,Nt.see,Nb.est,Nb.see,Nf.est,Nf.see,Qest,PDF=T,Code="No model",BreedNames,FeedNames,Nyear,Years,Yr1,Yr2,Nbreed,Nfeed,rept,AllPlots)
  {
   
   Lag <- 45
@@ -115,73 +115,74 @@ PlotIndex <- function(SurveyD,LogNT,LogNb,LogNf,Qest,PDF=T,Code="No model",Breed
   FileName <- paste0(PlotsDir,"TotalAbund",Code,".png")
   if (PDF==T) png(filename=FileName,width=700,height=800)
   par(mfrow=c(1,1),oma=c(3,3,20,3),mar=c(4,4,2,2))
-  
+   
   #Total population absolute abundance data
   Index2 <- SurveyD[SurveyD[,3]== 1,] 
-  SD1 <- Index2[,9];
+  Icomp <- Index2[1,8]+1
+ 
+  SD1 <- Index2[,10];
   SDD <- SD1
   if (Index2[1,7]>0) SDD <- sqrt(SD1^2+rept$AddV[Index2[1,7]])
-  Low1 <- Index2[,8]*exp(-1.96*SD1)
-  Upp1 <- Index2[,8]*exp(1.96*SD1)
-  Low2 <- Index2[,8]*exp(-1.96*SDD)
-  Upp2 <- Index2[,8]*exp(1.96*SDD)
-  ymax2 <- max(exp(LogNT[,1]),max(Upp2))*1.1
-  plot(Tyears,exp(LogNT[PlotYrs,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+  Low1 <- Index2[,9]*exp(-1.96*SD1)
+  Upp1 <- Index2[,9]*exp(1.96*SD1)
+  Low2 <- Index2[,9]*exp(-1.96*SDD)
+  Upp2 <- Index2[,9]*exp(1.96*SDD)
+  ymax2 <- max(exp(Nt.est[Icomp,PlotYrs]),max(Upp2))*1.1
+  plot(Tyears,exp(Nt.est[Icomp,PlotYrs]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
   for (II in 1:length(Index2[,1]))
   {
     Yr <- (Index2[II,1]+Index2[II,2])/2+Yr1
     #cat(Yr,Low[II],Upp[II],"\n")
-    points(Yr,Index2[II,8],pch=16)  
+    points(Yr,Index2[II,9],pch=16)  
     if (Index2[1,7]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
     if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red",lty-1)
     if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
   }  
   title("All")
-  lines(Tyears,exp(LogNT[PlotYrs,1]),lwd=2,lty=1)
-  lines(Tyears,exp(LogNT[PlotYrs,1]-1.96*LogNT[PlotYrs,2]),lty=2)
-  lines(Tyears,exp(LogNT[PlotYrs,1]+1.96*LogNT[PlotYrs,2]),lty=2)
+  lines(Tyears,exp(Nt.est[Icomp,PlotYrs]),lwd=2,lty=1)
+  lines(Tyears,exp(Nt.est[Icomp,PlotYrs]-1.96*Nt.see[Icomp,PlotYrs]),lty=2)
+  lines(Tyears,exp(Nt.est[Icomp,PlotYrs]+1.96*Nt.see[Icomp,PlotYrs]),lty=2)
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
   #if (AllPlots==F) return()
-
+ 
   #Breeding area absolute abundance data
   FileName <- paste0(PlotsDir,"BreedAbund",Code,".png")
   if (PDF==T) png(filename=FileName,width=700,height=800)
   par(mfrow=c(3,2),oma=c(1,1,3,1),mar=c(4,4,2,2))
   if (FullDiag==T) print("Doing absolute abundance data")
   for (Ibreed in 1:Nbreed)
-  {
+   {
     Index2 <- SurveyD[SurveyD[,3]== 2 & SurveyD[,4]== Ibreed & SurveyD[,5]== 1,]
-    if (length(Index2)==9) Index2 <- t(Index2)
-    Ipnt <- seq(from=Ibreed,by=Nbreed,length=Nyear)
-    Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
-    Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-
-    SD1 <- Index2[,9];
+    if (length(Index2)==10) Index2 <- t(Index2)
+    Icomp <- Index2[1,8]+1
+  
+    SD1 <- Index2[,10];
     SDD <- SD1
     if (Index2[1,7]>0) SDD <- sqrt(SD1^2+rept$AddV[Index2[1,7]])
-    Low1 <- Index2[,8]*exp(-1.96*SD1)
-    Upp1 <- Index2[,8]*exp(1.96*SD1)
-    Low2 <- Index2[,8]*exp(-1.96*SDD)
-    Upp2 <- Index2[,8]*exp(1.96*SDD)
-    ymax2 <- max(exp(LogNb[Ipnt,1]),max(Upp2))*1.1
-    plot(Tyears,exp(LogNb[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+    Low1 <- Index2[,9]*exp(-1.96*SD1)
+    Upp1 <- Index2[,9]*exp(1.96*SD1)
+    Low2 <- Index2[,9]*exp(-1.96*SDD)
+    Upp2 <- Index2[,9]*exp(1.96*SDD)
+    ymax2 <- max(exp(Nb.est[Icomp,Ibreed,PlotYrs]),max(Upp2))*1.1
+    plot(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
     for (II in 1:length(Index2[,1]))
     {
       Yr <- (Index2[II,1]+Index2[II,2])/2+Yr1
       #cat(Yr,Low[II],Upp[II],"\n")
-      points(Yr,Index2[II,8],pch=16)  
+      points(Yr,Index2[II,9],pch=16)  
       if (Index2[1,7]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
       if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red")
       if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
     }  
     title(BreedNames[Ibreed])
-    lines(Tyears,exp(LogNb[Ipnt,1]),lwd=2,lty=1)
-    lines(Tyears,exp(LogNb[Ipnt,1]-1.96*LogNb[Ipnt,2]),lty=2)
-    lines(Tyears,exp(LogNb[Ipnt,1]+1.96*LogNb[Ipnt,2]),lty=2)
-  } 
+    lines(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]),lwd=2,lty=1)
+    lines(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]-1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
+    lines(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]+1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
+   } 
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
+  
 
   #Feeding area absolute abundance data
   FileName <- paste0(PlotsDir,"FeedAbund",Code,".png")
@@ -190,32 +191,31 @@ PlotIndex <- function(SurveyD,LogNT,LogNb,LogNf,Qest,PDF=T,Code="No model",Breed
   for (Ifeed in 1:Nfeed)
   {
     Index2 <- SurveyD[SurveyD[,3]== 3 & SurveyD[,4]== Ifeed & SurveyD[,5]== 1,]
-    if (length(Index2)==9) Index2 <- t(Index2)
-    Ipnt <- seq(from=Ifeed,by=Nfeed,length=Nyear)
-    Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
-    Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-    SD1 <- Index2[,9]
+    if (length(Index2)==10) Index2 <- t(Index2)
+    Icomp <- Index2[1,8]+1
+
+    SD1 <- Index2[,10]
     SDD <- SD1
     if (Index2[1,7]>0) SDD <- sqrt(SD1^2+rept$AddV[Index2[1,7]])
-    Low1 <- Index2[,8]*exp(-1.96*SD1)
-    Upp1 <- Index2[,8]*exp(1.96*SD1)
-    Low2 <- Index2[,8]*exp(-1.96*SDD)
-    Upp2 <- Index2[,8]*exp(1.96*SDD)
-    ymax2 <- max(exp(LogNf[Ipnt,1]),max(Upp2))*1.1
-    plot(Tyears,exp(LogNf[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+    Low1 <- Index2[,9]*exp(-1.96*SD1)
+    Upp1 <- Index2[,9]*exp(1.96*SD1)
+    Low2 <- Index2[,9]*exp(-1.96*SDD)
+    Upp2 <- Index2[,9]*exp(1.96*SDD)
+    ymax2 <- max(exp(Nf.est[Icomp,Ifeed,PlotYrs]),max(Upp2))*1.1
+    plot(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
     for (II in 1:length(Index2[,1]))
     {
       Yr <- (Index2[II,1]+Index2[II,2])/2+Yr1
       #cat(Yr,Low[II],Upp[II],"\n")
-      points(Yr,Index2[II,8],pch=16)  
-      if (Index2[1,7]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
-      if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red")
-      if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
+      points(Yr,Index2[II,9],pch=16)  
+      if (Index2[1,8]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
+      if (Index2[1,8]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red")
+      if (Index2[1,8]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
     }  
     title(FeedNames[Ifeed])
-    lines(Tyears,exp(LogNf[Ipnt,1]),lwd=2,lty=1)
-    lines(Tyears,exp(LogNf[Ipnt,1]-1.96*LogNf[Ipnt,2]),lty=2)
-    lines(Tyears,exp(LogNf[Ipnt,1]+1.96*LogNf[Ipnt,2]),lty=2)
+    lines(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]),lwd=2,lty=1)
+    lines(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]-1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
+    lines(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]+1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
   } 
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
@@ -228,73 +228,70 @@ PlotIndex <- function(SurveyD,LogNT,LogNb,LogNf,Qest,PDF=T,Code="No model",Breed
   for (Iseries in 2:max(SurveyD[,5]))
   {
     Index2 <- SurveyD[SurveyD[,5]== Iseries,]
-    if (length(Index2)==9) Index2 <- t(Index2)
+    if (length(Index2)==10) Index2 <- t(Index2)
     if (Index2[1,3]==2)
      {
       Ibreed <- Index2[1,4]
-      Ipnt <- seq(from=Ibreed,by=Nbreed,length=Nyear)
-      Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
-      Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-      SD1 <- Index2[,9];
+      Icomp <- Index2[1,8]+1
+
+      SD1 <- Index2[,10];
       SDD <- SD1
       if (Index2[1,7]>0) SDD <- sqrt(SD1^2+rept$AddV[Index2[1,7]])
-      Low1 <- Index2[,8]*exp(-1.96*SD1)
-      Upp1 <- Index2[,8]*exp(1.96*SD1)
-      Low2 <- Index2[,8]*exp(-1.96*SDD)
-      Upp2 <- Index2[,8]*exp(1.96*SDD)
-      ymax2 <- max(Qest[Iseries]*exp(LogNb[Ipnt,1]),max(Upp2))*1.1
-      plot(Tyears,Qest[Iseries]*exp(LogNb[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+      Low1 <- Index2[,9]*exp(-1.96*SD1)
+      Upp1 <- Index2[,9]*exp(1.96*SD1)
+      Low2 <- Index2[,9]*exp(-1.96*SDD)
+      Upp2 <- Index2[,9]*exp(1.96*SDD)
+      ymax2 <- max(Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]),max(Upp2))*1.1
+      plot(Tyears,Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
       for (II in 1:length(Index2[,1]))
        {
         Yr <- (Index2[II,1]+Index2[II,2])/2+Yr1
         #cat(Yr,Low[II],Upp[II],"\n")
-        points(Yr,Index2[II,8],pch=16)  
+        points(Yr,Index2[II,9],pch=16)  
         if (Index2[1,7]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
         if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red")
         if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
        }  
-      lines(Tyears,Qest[Iseries]*exp(LogNb[Ipnt,1]),lwd=2,lty=1)
+      lines(Tyears,Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]),lwd=2,lty=1)
       Ibreed <- Index2[1,4]
       title(BreedNames[Ibreed])
-      lines(Tyears,Qest[Iseries]*exp(LogNb[Ipnt,1]),lwd=2,lty=1)
-      lines(Tyears,Qest[Iseries]*exp(LogNb[Ipnt,1]-1.96*LogNb[Ipnt,2]),lty=2)
-      lines(Tyears,Qest[Iseries]*exp(LogNb[Ipnt,1]+1.96*LogNb[Ipnt,2]),lty=2)
+      lines(Tyears,Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]),lwd=2,lty=1)
+      lines(Tyears,Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]-1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
+      lines(Tyears,Qest[Iseries]*exp(Nb.est[Icomp,Ibreed,PlotYrs]+1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
     }
     if (Index2[1,3]==3)
      {
       Ifeed <- Index2[1,4]
-      Ipnt <- seq(from=Ifeed,by=Nfeed,length=Nyear)
-      Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
-      Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-      SD1 <- Index2[,9];
+      Icomp <- Index2[1,8]+1
+
+      SD1 <- Index2[,10];
       SDD <- SD1
       if (Index2[1,7]>0) SDD <- sqrt(SD1^2+rept$AddV[Index2[1,7]])
-      Low1 <- Index2[,8]*exp(-1.96*SD1)
-      Upp1 <- Index2[,8]*exp(1.96*SD1)
-      Low2 <- Index2[,8]*exp(-1.96*SDD)
-      Upp2 <- Index2[,8]*exp(1.96*SDD)
-      ymax2 <- max(Qest[Iseries]*exp(LogNf[Ipnt,1]),max(Upp2))*1.1
-      plot(Tyears,Qest[Iseries]*exp(LogNf[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+      Low1 <- Index2[,9]*exp(-1.96*SD1)
+      Upp1 <- Index2[,9]*exp(1.96*SD1)
+      Low2 <- Index2[,9]*exp(-1.96*SDD)
+      Upp2 <- Index2[,9]*exp(1.96*SDD)
+      ymax2 <- max(Qest[Iseries]*exp(Nf.est[Icomp,Ifeed,PlotYrs]),max(Upp2))*1.1
+      plot(Tyears,Qest[Iseries]*exp(Nf.est[Icomp,Ifeed,PlotYrs]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
       for (II in 1:length(Index2[,1]))
       {
         Yr <- (Index2[II,1]+Index2[II,2])/2+Yr1
         #cat(Yr,Low[II],Upp[II],"\n")
-        points(Yr,Index2[II,8],pch=16)  
+        points(Yr,Index2[II,9],pch=16)  
         if (Index2[1,7]==0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=1)
         if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low1[II],Upp1[II]),lty=1,lwd=2,col="red")
         if (Index2[1,7]>0) lines(c(Yr,Yr),c(Low2[II],Upp2[II]),lty=1,lwd=1)
       }  
       Ibreed <- Index2[1,4]
       title(FeedNames[Ibreed])
-      lines(Tyears,Qest[Iseries]*exp(LogNf[Ipnt,1]),lwd=2,lty=1)
-      lines(Tyears,Qest[Iseries]*exp(LogNf[Ipnt,1]-1.96*LogNf[Ipnt,2]),lty=2)
-      lines(Tyears,Qest[Iseries]*exp(LogNf[Ipnt,1]+1.96*LogNf[Ipnt,2]),lty=2)
+      lines(Tyears,Qest[Iseries]*exp(Nf.est[Icomp,Ifeed,PlotYrs]),lwd=2,lty=1)
+      lines(Tyears,Qest[Iseries]*exp(Nf.est[Icomp,Ifeed,PlotYrs]-1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
+      lines(Tyears,Qest[Iseries]*exp(Nf.est[Icomp,Ifeed,PlotYrs]+1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
     }
   
   }
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
-  
 }
   
   # ------------------------------------------------------------------------------------
@@ -355,7 +352,7 @@ ENvfun <- function()
 
 # ====================================================================================
 
-PlotTraj <- function(LogNT,LogNb,LogNf,PDF=T,Code="No model",BreedNames,FeedNames,Nyear,Years,Yr1,Yr2,Nbreed,Nfeed)
+PlotTraj <- function(Nt.est,Nt.see,Nb.est,Nb.see,Nf.est,Nf.see,PDF=T,Code="No model",BreedNames,FeedNames,Nyear,Years,Yr1,Yr2,Nbreed,Nfeed)
 {
   Lag <- 45
   LastYr <- Nyear-1
@@ -367,16 +364,14 @@ PlotTraj <- function(LogNT,LogNb,LogNf,PDF=T,Code="No model",BreedNames,FeedName
   par(mfrow=c(3,2),oma=c(1,1,3,1),mar=c(4,4,2,2))
   if (FullDiag==T) print("Doing absolute abundance")
   for (Ibreed in 1:Nbreed)
-  {
-    Ipnt <- seq(from=Ibreed,by=Nbreed,length=Nyear)
-    Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
-    Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-    ymax2 <- max(exp(LogNb[Ipnt,1]))*1.4
-    plot(Tyears,exp(LogNb[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+   {
+    Icomp <- 2   # 1+ abundance
+    ymax2 <- max(exp(Nb.est[Icomp,Ibreed,PlotYrs]))*1.4
+    plot(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]),xlab="Year",ylab="1+ Population size",ylim=c(0,ymax2),type="l") 
     title(BreedNames[Ibreed])
-    lines(Tyears,exp(LogNb[Ipnt,1]-1.96*LogNb[Ipnt,2]),lty=2)
-    lines(Tyears,exp(LogNb[Ipnt,1]+1.96*LogNb[Ipnt,2]),lty=2)
-  } 
+    lines(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]-1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
+    lines(Tyears,exp(Nb.est[Icomp,Ibreed,PlotYrs]+1.96*Nb.see[Icomp,Ibreed,PlotYrs]),lty=2)
+   } 
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
   
@@ -389,14 +384,15 @@ PlotTraj <- function(LogNT,LogNb,LogNf,PDF=T,Code="No model",BreedNames,FeedName
     Ipnt <- seq(from=Ifeed,by=Nfeed,length=Nyear)
     Ipnt <- Ipnt[which(Years>=Yr2+1-Lag)]
     Ipnt <- rev(rev(Ipnt[-c(Nyear-LastYr)]))
-    ymax2 <- max(exp(LogNf[Ipnt,1]))*1.4
-    plot(Tyears,exp(LogNf[Ipnt,1]),xlab="Year",ylab="Population size",ylim=c(0,ymax2),type="l") 
+    ymax2 <- max(exp(Nf.est[Icomp,Ifeed,PlotYrs]))*1.4
+    plot(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]),xlab="Year",ylab="1+ Population size",ylim=c(0,ymax2),type="l") 
     title(FeedNames[Ifeed])
-    lines(Tyears,exp(LogNf[Ipnt,1]-1.96*LogNf[Ipnt,2]),lty=2)
-    lines(Tyears,exp(LogNf[Ipnt,1]+1.96*LogNf[Ipnt,2]),lty=2)
+    lines(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]-1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
+    lines(Tyears,exp(Nf.est[Icomp,Ifeed,PlotYrs]+1.96*Nf.see[Icomp,Ifeed,PlotYrs]),lty=2)
   } 
   mtext(paste0("Model run = ",Code),side=3,line=0,outer=T,cex=1.5)
   if (PDF==T) dev.off()
+
 }
 
 # =======================================================================================
