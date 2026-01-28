@@ -12,7 +12,7 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   
   ### Write out relevant information into a basic text file
   Nyear <- Yr2-Yr1+1
-  Nage <- 
+  Nage <- data$Nage
   
   Nbreed <- length(BreedNames)
   Nfeed <- length(FeedNames)

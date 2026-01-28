@@ -14,13 +14,13 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
                   UseKPrior=1, Kmax=60000,
                   AddCV=T,MixWeights=c(1,1),CatchSer="B",
                   envOpt="none",
-                  AllPlots=F,DoBoot=F,
+                  AllPlots=F,DoBoot=F,BootUse,
                   ByCatchFile="BycatchActual_2024_04_24.csv",
                   DataFileName= here('data',"Hump.dat"),
                   FullDiag=T,
-                  PlotsDir= paste0(here('plots'),"/"),
+                  # PlotsDir= paste0(here('plots'),"/"),
                   WghtTotal=1,Idirichlet=1,MaxN=100,seed=19101,
-                  BootUse,SetNew=0,Init=NULL,subdir="")
+                  DoBayes=F,SetNew=0,Init=NULL,subdir="")
 {
   
   cat("Doing ",paste0(Code,"-",SensCase)," using data file ",DataFileName,"\n")
@@ -30,37 +30,31 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   # =================================================================================================================================
   # Pass the correct parameters to the data-making function
   run_args <- as.list(environment())
-  # which_args <- which(names(run_args)%in%names(formals(MakeDataScenario)))
-  # dat_args <- run_args[which_args]
   
   # make the dataset
   dat <- do.call(MakeDataScenario,run_args)
+  
   # make the data objects available to this function
   list2env(dat, envir = environment())
-  # list2env(dat)
-  #print(str(data))
-  
   # =================================================================================================================================
   # Load Model Version
   # =================================================================================================================================
-  
   # source the correct model code, depending on "envOpt"
-  # i.e., choice about how to drive survival with environmental variables  
+  # i.e., choice about how to drive survival with environmental variables
   if(envOpt== 'none') source(here('code','full age structure','base.R'))
   if(envOpt== 'direct') source(here('code','full age structure','envDirect.R'))
   if(envOpt== 'index') source(here('code','full age structure','envIndex.R'))
   if(envOpt== 'varK') source(here('code','full age structure','varK.R'))
   if(envOpt== 'randomS') source(here('code','full age structure','base_randomSDevs.R'))
+  if(envOpt== 'index_randomS') source(here('code','full age structure','envIndex_randomSDevs.R'))
   # =================================================================================================================================
   # Build TMB Model
   # =================================================================================================================================
   
   if (FullDiag==T) print("Calling MakeADM")
-  if(envOpt=='randomS') model <-MakeADFun(cmb(f,dat), parameters, random=c("SFdev"), map=map,DLL="Hump",silent=F)
+  if(envOpt=='randomS'|envOpt=="index_randomS") model <-MakeADFun(cmb(f,dat), parameters, random=c("SFdev"), map=map,DLL="Hump",silent=F)
+  if(envOpt=='varK') model <-MakeADFun(cmb(f,dat), parameters, random=c("Kdev"), map=map,DLL="Hump",silent=F)
   else model <- MakeADFun(cmb(f,dat), parameters, map=map,DLL="Hump",silent=T)
-  #checkConsistency(model)
-  #prefit <- model$report()
-  #print(rept$neglogL)
   
   # =================================================================================================================================
   # Optimize
@@ -112,6 +106,10 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
     }
   }
   
+  # Save model
+  fildir <- here("Diags",subdir)
+  if(!dir.exists(fildir)) dir.create(fildir)
+  readr::write_rds(model,paste0(fildir,"/",Code,SensCase,"_TMB.rds"))
   # =================================================================================================================================
   # Extract Results
   # =================================================================================================================================
@@ -190,21 +188,48 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   # Bootstrap
   # =================================================================================================================================
   
-  if (DoBoot==T) Bootstrap(Code=paste0(Code,SensCase),data=dat,parameters,map,rept,Yr1,Yr2,
-                           BreedNames,FeedNames,Nboot=500,seed,BootUse,bestOrig=best)
+  # Bootstrap
+  BootUse <- matrix(1,nrow=4,ncol=500)
+  if (DoBoot==T) Bootstrap(Code=paste0(Code,SensCase),dat=dat,parameters,map,rept,Yr1,Yr2,
+                           BreedNames,FeedNames,Nboot=10,seed,BootUse,bestOrig=best,envOpt=envOpt,subdir=subdir)
+  
+  # =================================================================================================================================
+  # Full Bayesian sampling
+  # =================================================================================================================================
+  if (DoBayes==T){
+    require(tmbstan)
+    # Now consider mcmc sampling (stan)
+    print("trying Bayes")
+    options(mc.cores=4)
+    mcmcout <- tmbstan(obj=model,iter=10000,refresh=100,warmup = 10000/10, chains=4,cores=1,
+                       init = list(best,best,best,best),
+                       seed = 1916, thin = 1)
+    ## Key information from run. Including the two recommended
+    ## convergence diagnostics:
+    # print(summary(mcmcout))
+    # create file directory if it does not exist yet
+    fildir <- here("Diags",subdir)
+    if(!dir.exists(fildir)) dir.create(fildir)
+    # save Bayes out
+    readr::write_rds(mcmcout,paste0(fildir,"/",Code,SensCase,"_Bayes.rds"))
+  }
   
   return(best)
 }
 
 # ==========================================================================================
 # BOOTSTRAPPING FUNCTION
+# ==========================================================================================
 
-Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,Nboot=2,seed=19101,BootUse,bestOrig)
-{
-  FileNameBoot <- paste0("Diags/",Code,".Boot")
+Bootstrap <- function(Code,dat,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,Nboot=2,seed=19101,BootUse,bestOrig,envOpt,subdir=""){
+  
+  fildir <- here("Diags",subdir)
+  if(!dir.exists(fildir)) dir.create(fildir)
+  FileNameBoot <- paste0(fildir,"/",Code,".Boot")
+  
   write("",FileNameBoot)
-  TrueSurv <- data$SurveyR
-  SurveyI <- data$SurveyI
+  TrueSurv <- dat$SurveyR
+  SurveyI <- dat$SurveyI
   Nbreed <- length(BreedNames)
   Nfeed <- length(FeedNames)
   Nyear <- Yr2-Yr1+1
@@ -213,48 +238,49 @@ Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames
   AddV <-rept$AddV
   set.seed(seed)
   seeds <- floor(runif(Nboot+1,1,10000))
+  Nyr <- (Yr2+1)-Yr1+1
   
   # Do bootstrap
-  for (Iboot in 1:Nboot)
-  {
+  for (Iboot in 1:Nboot){
+    # Bootstrapped dataset
+    datboot <- dat
     set.seed(seeds[Iboot+1])
     #cat("Boot",Iboot,seeds[Iboot+1],"\n")
-    if (Iboot > 0)
+    if (Iboot > 1)
       for (Irep in 1:BootUse[Iboot])
       {
         # Generate data (Abundance)
-        #cat(Iboot,Irep,"\n")
+        cat(Iboot,Irep,"\n")
         for (II in 1:length(TrueSurv[,1]))
         {
           SEL <- TrueSurv[II,2]
           if (SurveyI[II,7]>0) SEL <- sqrt(SEL^2+AddV[SurveyI[II,7]])
-          dat$SurveyR[II,1] <<- as.numeric(PredSurv[II]*exp(rnorm(1,0,SEL)-SEL^2.0/2.0))
-          #new <- PredSurv[II]*exp(rnorm(1,0,SEL)-SEL^2.0/2.0)
-          #new <- dat$SurveyR[II,1]
-          #print(c(dat$SurveyR[II,1],PredSurv[II],new))
-          if (dat$SurveyR[II,1]<=0) print("oops1")
+          datboot$SurveyR[II,1] <- as.numeric(PredSurv[II]*exp(rnorm(1,0,SEL)-SEL^2.0/2.0))
+          if (datboot$SurveyR[II,1]<=0) print("oops1")
         }
         # Generate data (mixing)
         for (II in 1:2)
           for (Ibreed in 1:Nbreed)
           {
-            xx <- rmultinom(1:Nfeed,round(data$ObsMixBtoFO[II,Ibreed]),prob=0.00001+PredMixOut[1,Ibreed,])  
-            dat$ObsMixBtoFE[II,Ibreed,] <<- xx/sum(xx)
-            if (any(dat$ObsMixBtoFE[II,Ibreed,]<0)) print("oops2")
+            xx <- rmultinom(1:Nfeed,round(datboot$ObsMixBtoFO[II,Ibreed]),prob=0.00001+PredMixOut[1,Ibreed,])  
+            datboot$ObsMixBtoFE[II,Ibreed,] <- xx/sum(xx)
+            if (any(datboot$ObsMixBtoFE[II,Ibreed,]<0)) print("oops2")
           }
         for (II in 1:2)
           for (Ifeed in 1:Nfeed)
           {
-            xx <- rmultinom(1:Nbreed,round(data$ObsMixFtoBO[II,Ifeed]),prob=0.00001+PredMixOut[2,,Ifeed])  
-            dat$ObsMixFtoBE[II,,Ifeed] <<- xx/sum(xx)
-            if (any(dat$ObsMixFtoBE[II,,Ifeed]<0)) print("oops3")
+            xx <- rmultinom(1:Nbreed,round(datboot$ObsMixFtoBO[II,Ifeed]),prob=0.00001+PredMixOut[2,,Ifeed])  
+            datboot$ObsMixFtoBE[II,,Ifeed] <- xx/sum(xx)
+            if (any(datboot$ObsMixFtoBE[II,,Ifeed]<0)) print("oops3")
           }
-        dat$NmixData <- 1000
+        datboot$NmixData <- 1000
       } # Irep and Iboot
     
     # Apply RTMB
-    model <- MakeADFun(f, parameters, map=map,DLL="Hump",silent=T)
-    if (FullDiag==T) print("Calling Fit")
+    
+    if(envOpt=='randomS'|envOpt=="index_randomS") model <-MakeADFun(cmb(f,datboot), parameters, random=c("SFdev"), map=map,DLL="Hump",silent=F)
+    else model <- MakeADFun(cmb(f,datboot), parameters, map=map,DLL="Hump",silent=T)
+    
     #model$par <- bestOrig
     FitBest  <- 1.0e20
     fit <- nlminb(model$par, model$fn, model$gr)
@@ -288,41 +314,45 @@ Bootstrap <- function(Code,data,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames
       write(best[II],FileNameBoot,append=T,ncol=4)
     
     write("\nTotal abundance: Estimate SD_log",FileNameBoot,append=T)
-    for (iyr in Yr1:(Yr2+1))
-    { xx <- c(Iboot,iyr,exp(LogNT[iyr-Yr1+1,1]),LogNT[iyr-Yr1+1,2]); write(xx,FileNameBoot,append=T,ncol=4); }
+    for (Icomp in 1:3)
+      for (iyr in Yr1:(Yr2+1))
+      { xx <- c(Iboot,Icomp,iyr,exp(LogNT[3*(iyr-Yr1+1-1)+Icomp,1]),LogNT[3*(iyr-Yr1+1-1)+Icomp,2]); write(xx,FileNameBoot,append=T,ncol=5); }
     
     write("\nBreeding stock abundance",FileNameBoot,append=T)
-    write(paste0(unlist(BreedNames)),FileNameBoot,append=T,ncol=Nbreed)  
+    write(paste0(unlist(BreedNames)," ",unlist(BreedNames)," ",unlist(BreedNames)),FileNameBoot,append=T,ncol=Nbreed)  
     BreedOut <- cbind(rep(Iboot,Nyear),Yr1:Yr2)
     for (Ibreed in 1:Nbreed)
-    {
-      Ipnt <- seq(from=Ibreed,by=Nbreed,length=Nyear)
-      xx <- NULL
-      for (iyr in Yr1:Yr2) xx <- c(xx,exp(LogNb[Ipnt[iyr-Yr1+1],1]));
-      BreedOut <-cbind(BreedOut,xx)
-    }
-    write(t(BreedOut),FileNameBoot,append=T,ncol=Nbreed+2); 
+      for (Icomp in 1:3)
+      {
+        xx <- NULL
+        for (iyr in Yr1:Yr2) 
+        { Jpnt <- Nbreed*3*(iyr-Yr1+1-1)+(Ibreed-1)*3+Icomp; xx <- c(xx,exp(LogNb[Jpnt,1])); }
+        BreedOut <-cbind(BreedOut,xx)
+      }
+    write(t(BreedOut),FileNameBoot,append=T,ncol=3*Nbreed+2); 
     
     write("\nFeeding stock abundance",FileNameBoot,append=T)
-    write(paste0(unlist(FeedNames)),FileNameBoot,append=T,ncol=Nfeed)  
+    write(paste0(unlist(FeedNames)," ",unlist(FeedNames)," ",unlist(FeedNames)),FileNameBoot,append=T,ncol=Nfeed)  
     FeedOut <- cbind(rep(Iboot,Nyear),Yr1:Yr2)
     for (Ifeed in 1:Nfeed)
-    {
-      Ipnt <- seq(from=Ifeed,by=Nfeed,length=Nyear)
-      xx <- NULL
-      for (iyr in Yr1:Yr2)xx <- c(xx,exp(LogNf[Ipnt[iyr-Yr1+1],1])); 
-      FeedOut <-cbind(FeedOut,xx)
-    }
-    write(t(FeedOut),FileNameBoot,append=T,ncol=Nfeed+2); 
+      for (Icomp in 1:3)
+      {
+        xx <- NULL
+        for (iyr in Yr1:Yr2) 
+        { Jpnt <- Nfeed*3*(iyr-Yr1+1-1)+(Ifeed-1)*3+Icomp; xx <- c(xx,exp(LogNf[Jpnt,1])); }
+        FeedOut <-cbind(FeedOut,xx)
+      }
+    write(t(FeedOut),FileNameBoot,append=T,ncol=3*Nfeed+2); 
     
     write("\nSurvival by feeding ground",FileNameBoot,append=T)
     write(t(unlist(FeedNames)),FileNameBoot,append=T,sep=',',ncol=Nfeed)
     for (iyr in Yr1:Yr2)
     { xx <- c(Iboot,iyr,rept$SurvOutF[,iyr-Yr1+1]); write(xx,FileNameBoot,append=T,ncol=Nfeed+2); }
     
-  } # Boot
+  } # NBoot loop
   
 }
+
 # ==========================================================================================
 # THIS IS WHERE ALL THE ACTION HAPPENS- ACTUALLY RUN THE MODEL
 ###################################################################################################
@@ -336,18 +366,36 @@ xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAenvIndex",envOpt="index",SF
 # Variable K model
 xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAvarK",envOpt="varK",SF=c(1,1,1,1,1,1),YrSDevs=2000,WithMirror = 0, AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
 # With survival as random effects
-xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",SF=c(1,1,1,1,1,1),YrSDevs=2000,WithMirror = 0,AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",
+            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            DoBayes = F,Init=NULL,SetNew=0)
+# (with Bayesian sampling)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",
+            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            DoBayes = T,Init=NULL,SetNew=0)
+# environmental index with survival as random effects
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FAenvIndex_rS",envOpt="index_randomS",
+            SF=c(0,1,0,1,1,1),WithMirror = 1,AllPlots=T,DoBoot=F,
+            DoBayes = F,Init=NULL,SetNew=0)
 
+# environmental index with random K
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FAvarK",envOpt="varK",
+            SF=c(0,1,0,1,1,1),WithMirror = 1,AllPlots=T,DoBoot=F,
+            DoBayes = F,Init=NULL,SetNew=0)
 ###################################################################################################
 
 # Boostraps (BootUse is used to trap horrible bootstraps)
-if (Case==4)
-{
-  Codes <- c("B1F1","B1F2","B2F1","B2F2")
-  BootUse <- matrix(1,nrow=4,ncol=500)
-  for (Icode in 2:2)
-  {
-    Code <- Codes[Icode]  
-    xx <- DoRun(Code,SensCase="BC",AllPlots=T,DoBoot=T,seed=1234,BootUse=BootUse[Icode,])
-  }
-}
+# if (Case==4)
+# {
+#   Codes <- c("B1F1","B1F2","B2F1","B2F2")
+#   BootUse <- matrix(1,nrow=4,ncol=500)
+#   for (Icode in 2:2)
+#   {
+#     Code <- Codes[Icode]  
+#     xx <- DoRun(Code,SensCase="BC",AllPlots=T,DoBoot=T,seed=1234,BootUse=BootUse[Icode,])
+#   }
+# }

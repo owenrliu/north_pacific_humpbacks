@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+*Bayes.rds
+*TMB.rds
 data/

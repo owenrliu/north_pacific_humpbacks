@@ -25,20 +25,21 @@ test2 %>% ggplot(aes(eps,Sout,color=ordered(S)))+geom_line(linewidth=1.25)+theme
 
 #######################
 # Run all this to seed the DoRun function
-Code="B2F1";SensCase="BC";StochSopt=1;StrayBase=0;IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
-SF=c(0,1,0,1,1,1); 
+Code="B2F1";SensCase="BC";StochSopt=1;StrayBase=0;
+IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
+SF=c(0,1,0,1,1,1); WithMirror=T
 UseKPrior=1; Kmax=60000;
 YrSDevs=2000;
-envOpt="randomS";
-SigmaDevS=6;SigmaDevF=0.01;WithMirror=1;Yr1=1970;Yr2=2023;
+envOpt="varK";
+SigmaDevS=6;SigmaDevF=0.01;Yr1=1970;Yr2=2023;
 AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
 ByCatchFile="BycatchActual_2024_04_24.csv";
 DataFileName= here('data',"Hump.dat");
 FullDiag=T;
 WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
-SetNew=0;Init=NULL;Nage=11;
+SetNew=0;Init=NULL;Nage=11;DoBayes=T;
 
-subdir = "B2F2 FAbase"
+subdir = "B2F1 FAvarK"
 
 # =================================================================================================================================
 # Checking and Debugging
@@ -66,9 +67,11 @@ test <- f(parNew,dat)
 
 ### Pulling a result
 obj <- read_rds(here('Diags','B2F2 FAbase','B2F2BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAenvIndex','B2F1BC.rds'))
-
+obj <- read_rds(here('Diags','B2F1 FAenvIndex_rS','B2F1BC.rds'))
 obj <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
+###
+
+# Reports and outputs
 sdr <- obj$sdfixed
 rept <- obj$report
 # all ADREPORTed things
@@ -101,6 +104,17 @@ survOutdf |>
 omegasst <- adr[grepl("omega_sst",row.names(adr)),]
 omegachl <- adr[grepl("omega_chl",row.names(adr)),]
 
+## Abundance indices from sdreport
+yrs <- pluck(obj,"input","Years")
+numyr <- length(yrs)
+abund <- pluck(obj,"sdreport") |> 
+  as_tibble(rownames="param") |> 
+  filter(param=="LogNT") |> 
+  # replicate dimensions of LogNT (year columns by component rows)
+  mutate(year=rep(as.integer(yrs),each=3),component=rep(c("1+","2+","Mature"),numyr)) |> 
+  set_names(c("param","total.ln","sd.abun","year","component")) |> 
+  mutate(total=exp(total.ln)) |> 
+  mutate(upper=exp(total.ln+1.96*sd.abun),lower=exp(total.ln-1.96*sd.abun))
 
 # Developing output writing code:
 # Abbrev = SensCase;
@@ -123,3 +137,120 @@ scen.names <- c("Base","Direct","Index","VarK")
 objlist <- list(obj1,obj4,obj2,obj3)
 scen.names <- c("Base","Direct","Index","VarK")
 plot_compare_abundance(objlist,scen.names)
+
+
+# Calculate kdevs
+foor <- function(K1,K2,N,Sb=0.96){
+  Sb*(1-(N/K2-N/K1))
+}
+foor(K1=10000,K2=9000,N=7500)
+# what if we alter survival by 1 minus the diff in depletion
+
+# Get MortDiff
+md <- rept$MortDiff*-1 # switch sign
+bn <-obj$input$BreedNames |> as.character()
+fn <- obj$input$FeedNames |> as.character()
+yrs <- obj$input$Yr1:obj$input$Yr2
+mddf <- tibble(md=as.numeric(md),
+               breed=rep(rep(bn,length(fn)),length(yrs)),
+               feed=rep(rep(fn,each=length(bn)),length(yrs)),
+               year=rep(yrs,each=length(fn)*length(bn))) |> 
+  mutate(across(where(is.list),as.character)) |> 
+  unite(herd,breed,feed,remove = F)
+mddf |> 
+  ggplot(aes(year,md,color=herd))+
+  geom_line()+
+  theme_minimal()
+
+mddf |> 
+  ggplot(aes(year,md))+
+  geom_line()+
+  facet_grid(feed~breed)+
+  theme_minimal()
+# cumulative
+cume_mort_df <- mddf |> 
+  group_by(herd) |> 
+  arrange(year) |> 
+  mutate(cume_md=cumsum(md)) |> 
+  filter(last(cume_md)!=0)
+cume_mort_df |> 
+  ggplot(aes(year,cume_md,color=herd,fill=herd))+
+  # geom_line()+
+  # geom_area()+
+  geom_col()+
+  theme_classic()
+
+# Catch data?
+catchb <- tibble(catchb=as.numeric(obj$input$CatchB),
+                 breed=rep(bn,each=length(yrs)),
+                 year=rep(yrs,length(bn))) |> 
+  group_by(breed) |> 
+  arrange(year) |> 
+  mutate(cume_catchb=cumsum(catchb))
+catchf <- tibble(catchf=as.numeric(obj$input$CatchF),
+                 feed=rep(fn,each=length(yrs)),
+                 year=rep(yrs,length(fn))) |> 
+  group_by(feed) |> 
+  arrange(year) |> 
+  mutate(cume_catchf=cumsum(catchf))
+
+catchb |> 
+  ggplot(aes(year,cume_catchb,color=breed,fill=breed))+
+  # geom_line()+
+  geom_area()+
+  theme_classic()
+catchf |> 
+  ggplot(aes(year,cume_catchf,color=feed,fill=feed))+
+  # geom_line()+
+  geom_area()+
+  theme_classic()
+
+# combined
+mdc <- cume_mort_df |> 
+  group_by(year) |> 
+  summarise(cumemort=sum(cume_md),
+            mort=sum(md),
+            .groups="drop")
+cb <- catchb |> ungroup() |> 
+  group_by(year) |> 
+  summarise(cume_catchb=sum(cume_catchb),
+            catchb=sum(catchb),
+            .groups='drop')
+cf <- catchf |> ungroup() |> 
+  group_by(year) |> 
+  summarise(cume_catchf=sum(cume_catchf),
+            catchf=sum(catchf),
+            .groups='drop')
+mdc <- mdc |> 
+  left_join(cb) |> 
+  left_join(cf) |> 
+  pivot_longer(contains('cume'),names_to='cumetype',values_to='cumemort') |> 
+  pivot_longer(mort:catchf,names_to='type',values_to='mort')
+
+mdc |> 
+  ggplot(aes(year,cumemort,fill=cumetype,color=cumetype))+
+  geom_col()+
+  theme_minimal()+
+  labs(y="cumulative mortality")
+
+# mortality rates
+# total abun
+NNS <- pluck(rept,"NNS")
+nyrs <- length(yrs)+1
+babun <- tibble(abun=as.numeric(NNS),
+                breed=rep(rep(bn,length(fn)),nyrs),
+                feed=rep(rep(fn,each=length(bn)),nyrs),
+                year=rep(c(yrs,max(yrs)+1),each=length(fn)*length(bn)))
+tabun <- babun |> 
+  group_by(year) |> 
+  summarise(tot=sum(abun))
+
+rate <- mdc |> 
+  left_join(tabun) |> 
+  mutate(mortrate=mort/tot)
+rate |> 
+  ggplot(aes(year,mortrate,fill=type,color=type))+
+  # geom_col()+
+  geom_line()+
+  theme_minimal()+
+  labs(y="Mortality rate/ind./yr")

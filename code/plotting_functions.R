@@ -161,22 +161,75 @@ plot_survival_curve <- function(obj,opt="F"){
     mutate(upper=survival+1.96*sd.survival,lower=survival-1.96*sd.survival) |> 
     mutate(upper=pmin(upper,1),lower=pmax(0,lower)) |>
     left_join(envdf,by=join_by(year,zone))
-  
+  nzone=length(unique(sdat$zone))
   psst <- sdat |> 
     ggplot(aes(sst,survival))+
-    geom_text(aes(label=year,color=year),size=2)+
-    geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
+    geom_point(aes(color=zone))+
+    # geom_text(aes(label=year,color=year),size=2)+
+    # geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
     labs(x="SST",y="Survival")+
-    scale_color_viridis()+
-    facet_wrap(~zone)
+    scale_color_manual(values=viridis_pal()(nzone))
+    # facet_wrap(~zone)
   pchl <- sdat |> 
     ggplot(aes(chl,survival))+
-    # geom_point(aes(color=year))+
-    geom_text(aes(label=year,color=year),size=2)+
-    geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
+    geom_point(aes(color=zone))+
+    # geom_text(aes(label=year,color=year),size=2)+
+    # geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
     labs(x="Chlorophyll",y="Survival")+
-    scale_color_viridis()+
-    facet_wrap(~zone)
+    scale_color_manual(values=viridis_pal()(nzone))
+    # facet_wrap(~zone)
+  cowplot::plot_grid(psst,pchl,nrow=2)
+}
+# ------------------------------------------------------------------------------------
+# Plot relationship between Sdevs and environmental data
+# This is the linear relationship estimated in the model
+# Option- either "B" or "F" for survival on breeding or feeding grounds
+plot_Sdevs_curve <- function(obj){
+  
+  sdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="SFdevYr")
+  
+  # fitted data sdat <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="SFdevYr")
+  yrs <- pluck(obj,"input","Years")
+  yrs <- yrs[-length(yrs)] #remove the last year because there's no survival calculated
+  numyr <- length(yrs)
+  # names
+  zn <- pluck(obj,'input','FeedNames') |> as.character()
+  numz <- length(zn)
+  
+  sst <- pluck(obj,"input","sst")
+  chl <- pluck(obj,"input","chl")
+  ydevs <- pluck(obj,"input","YrSDevs")
+  envdf <- tibble(year=rep(ydevs:max(yrs),each=numz),
+                  sst=as.vector(sst),
+                  chl=as.vector(chl)) |> 
+    mutate(zone=rep(zn,length(ydevs:max(yrs))))
+  
+  sdat <- sdat |> 
+    mutate(year=rep(yrs,each=numz)) |> 
+    mutate(zone=rep(zn,numyr)) |> 
+    mutate(year=as.integer(year)) |> 
+    set_names(c("param","sdev","sd.sdev","year","zone")) |> 
+    mutate(upper=sdev+1.96*sd.sdev,lower=sdev-1.96*sd.sdev) |>
+    left_join(envdf,by=join_by(year,zone)) |> 
+    filter(year>=ydevs)
+  nzone=length(unique(sdat$zone))
+  psst <- sdat |> 
+    ggplot(aes(sst,sdev))+
+    geom_pointrange(aes(color=zone,ymin=lower,ymax=upper))+
+    # geom_text(aes(label=year,color=year),size=2)+
+    # geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
+    labs(x="SST",y="Survival Deviate")+
+    scale_color_manual(values=viridis_pal()(nzone))
+  # facet_wrap(~zone)
+  pchl <- sdat |> 
+    ggplot(aes(chl,sdev))+
+    geom_point(aes(color=zone))+
+    geom_pointrange(aes(color=zone,ymin=lower,ymax=upper))+
+    # geom_text(aes(label=year,color=year),size=2)+
+    # geom_arrow_chain(color='gray80',linewidth=0.25,arrow_head="head_wings")+
+    labs(x="Chlorophyll",y="Survival Deviate")+
+    scale_color_manual(values=viridis_pal()(nzone))
+  # facet_wrap(~zone)
   cowplot::plot_grid(psst,pchl,nrow=2)
 }
 
@@ -250,29 +303,30 @@ plot_abundance <- function(obj,opt="total"){
   survd <- Surveys |> 
     filter(Hypothesis%in%hyp,Use=="Yes") |> 
     rename(year=Year2) |> 
-    dplyr::select(year,Estimate,CV,Area,Class,Rel,Hypothesis,Class) |> 
+    dplyr::select(year,Estimate,CV,Area,Class,Rel,Hypothesis,Class,component=Component) |> 
     mutate(sd.estimate=Estimate*CV,
            q = 1/Qvec[Class],
            rescaled.est = q*Estimate,
            rescaled.upper=q*(Estimate+sd.estimate),
-           rescaled.lower=q*(Estimate-sd.estimate))
+           rescaled.lower=q*(Estimate-sd.estimate)) |> 
+    mutate(component=ifelse(component==0,"0+","1+"))
   
   if(opt=="total") {
     # As of Dec 2025, LogNT should be re-formed into a 3x(Nyr+1)
     d <- pluck(obj,"sdreport") |> as_tibble(rownames="param") |> filter(param=="LogNT")
     d <- d |> 
-      mutate(year=rep(as.integer(yrs),each=3),component=rep(c("1+","2+","Mature"),numyr)) |> 
+      mutate(year=rep(as.integer(yrs),each=3),component=rep(c("0+","1+","Mature"),numyr)) |> 
       set_names(c("param","total.ln","sd.abun","year","component")) |> 
       mutate(total=exp(total.ln)) |> 
       mutate(upper=exp(total.ln+1.96*sd.abun),lower=exp(total.ln-1.96*sd.abun))
     surv <- survd |> filter(Area=="Total")
-    d <- d |> left_join(surv,by=join_by(year))
+    d <- d |> left_join(surv,by=join_by(year,component))
     p <- d |> 
       filter(year<max(year)) |> 
       ggplot()+
       geom_ribbon(aes(year,total,ymax=upper,ymin=lower,group=component,fill=component),alpha=0.5)+
       geom_line(aes(year,total,color=component))+
-      geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower),
+      geom_pointrange(aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower,color=component),
                       linetype=2,size=0.5)+
       labs(x="Year",y="Total Abundance",color="Component",fill="Component")
   }
@@ -287,19 +341,19 @@ plot_abundance <- function(obj,opt="total"){
       # make sure to check this dimensioning
       mutate(year=rep(yrs,each=numz*3)) |> 
       mutate(zone=rep(rep(zn,each=3),numyr)) |>
-      mutate(component=rep(1:3,numyr*numz)) |> 
-      # for now, just filter for all 1+
-      filter(component==1) |> 
+      mutate(component=rep(c("0+","1+","Mature"),numyr*numz)) |> 
       mutate(year=as.integer(year)) |> 
       set_names(c("param","ln.abun","sd.abun","year","zone","component")) |> 
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
     
     surv <- survd |> filter(Area%in%unique(d$zone))
-    d <- d |> left_join(surv,by=join_by(year,zone==Area))
+    d <- d |> left_join(surv,by=join_by(year,component,zone==Area))
     
     p <- d |> 
       filter(year<max(year)) |> 
+      # for now, filter to 1+
+      filter(component=="1+") |> 
       ggplot()+
       geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
       geom_line(aes(year,abun))+
@@ -318,18 +372,18 @@ plot_abundance <- function(obj,opt="total"){
       # make sure to check this dimensioning
       mutate(year=rep(yrs,each=numz*3)) |> 
       mutate(zone=rep(rep(zn,each=3),numyr)) |>
-      mutate(component=rep(1:3,numyr*numz)) |> 
-      # for now, just filter for all 1+
-      filter(component==1) |> 
+      mutate(component=rep(c("0+","1+","Mature"),numyr*numz)) |> 
       mutate(year=as.integer(year)) |> 
       set_names(c("param","ln.abun","sd.abun","year","zone","component")) |> 
       mutate(abun=exp(ln.abun)) |> 
       mutate(upper=exp(ln.abun+1.96*sd.abun),lower=exp(ln.abun-1.96*sd.abun))
     surv <- survd |> filter(Area%in%unique(d$zone))
-    d <- d |> left_join(surv,by=join_by(year,zone==Area))
+    d <- d |> left_join(surv,by=join_by(year,component,zone==Area))
     
     p <- d |>
       filter(year<max(year)) |> 
+      # for now, filter to 1+
+      filter(component=="0+") |>
       ggplot()+
       geom_ribbon(aes(year,abun,ymax=upper,ymin=lower),fill='lightblue')+
       geom_line(aes(year,abun))+
