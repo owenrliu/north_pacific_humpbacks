@@ -124,11 +124,11 @@ f <- function(parms,dat)
     }
   
   # calculate index, making sure to account for potential mirroring
-  whichfeed <- which(SF==1)
-  env_index <- omega_sst*sst[whichfeed,]+omega_mld*mld[whichfeed,]
+  whichFeed <- which(SF==1)
+  env_index <- omega_sst*sst[whichFeed,]+omega_mld*mld[whichFeed,]+epsEnv
   # Difference between SFdevs and environmental index
   IenvStart=Nyr-(Yr2-YrSDevs)
-  envPenal <- c(SFdevYr[whichfeed,IenvStart:Nyr]-env_index)
+  envPenal <- c(SFdevYr[whichFeed,IenvStart:Nyr]-env_index)
   
   # ========================================================================================================================
   
@@ -557,7 +557,12 @@ f <- function(parms,dat)
   }
   
   # SF devs as REs
+  SFsigma <- exp(log_SFsigma)
   LogLikeSDevs <- -sum(dnorm(SFdev,mean=0,sd=SFsigma,log=T))
+  
+  # Environmental index error
+  sigmaEnv <- exp(log_sigmaEnv)
+  LogLikeEnv <- -sum(dnorm(epsEnv,mean=0,sd=sigmaEnv,log=T))
 
   # Weak penalties for stability
   Penal <- 0;
@@ -570,9 +575,10 @@ f <- function(parms,dat)
   Penal <- Penal - sum(dnorm(FBdev,0.0,1.0,log=T));
   ## Environmental index
   Penal <- Penal - sum(dnorm(envPenal,0.0,1.0,log=T));
+  ##
   TotalK <- sum(BreedK)
   if (UseKPrior > 0)  Penal <- Penal - UseKPrior*log(1.0/(1.0+exp(Prior_int+Prior_slope*TotalK)))
-  datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+LogLikeSDevs;
+  datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+LogLikeSDevs+LogLikeEnv;
   neglogL <-  Penal + datalike;
   # print likelihood?
   # cat(paste("Survey likelihood: ",LogLike1,"\nMixingBtF likelihood: ",sum(LogLike2a),"\nMixingFtB likelihood: ",sum(LogLike2b),

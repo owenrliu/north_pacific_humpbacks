@@ -100,11 +100,34 @@ f <- function(parms,dat)
   # Environmental Index of Survival
   # ========================================================================================================================
   SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
-  IenvStart=Nyr-(Yr2-YrSDevs)
+  YrMatch=Nyr-(Yr2-YrSDevs)
   ## Regression (omegasst*sst+omegachl*chl)
-  whichFeed <- which(SF==1)
-  env_index <- omega_sst*sst[whichFeed,]+omega_chl*chl[whichFeed,]
-  SFdevYr[whichFeed,IenvStart:Nyr] <- env_index
+  whichFeed <- which(SF==1) # which feeding grounds have variable survival?
+  whichE <- which(EF==1) # which feeding grounds have environ. covariates?
+  whichRS <- setdiff(whichFeed,whichE) # which feeding grounds have only random surv?
+  whichRE <- intersect(whichE,whichFeed)
+  # index includes normal random error epsEnv
+  if(length(whichRE)>0){
+    env_index <- omega_sst*sst[whichRE,]+omega_mld*mld[whichRE,]+epsEnv
+    SFdevYr[whichRE,YrMatch:Nyr] <- env_index
+  }
+  if(length(whichRS)>0){
+    SFdevYr[whichRS,YrMatch:Nyr] <- SFdev
+  }
+  
+  #splines
+  # mld_effect <- matrix(0,nrow=Nfeed,ncol=ncol(mld))
+  # sst_effect <- matrix(0,nrow=Nfeed,ncol=ncol(sst))
+  # for(i in 1:Nfeed){
+  #   mldX <- Xmld[,,i]
+  #   sstX <- Xsst[,,i]
+  #   mld_effect[i,] <- mldX %*% beta_splines_mld[i,]
+  #   sst_effect[i,] <- mldX %*% beta_splines_sst[i,]
+  # }
+  # env_index <- mld_effect+sst_effect
+  # SFdevYr[whichFeed,YrMatch:Nyr] <- env_index
+  # cat(env_index)
+  
   ## Mirror as needed
   if (Nmirror>0)
     for (Im in 1:Nmirror)
@@ -383,6 +406,9 @@ f <- function(parms,dat)
      } # close Ibreed
     } # close Year   
   
+  # if(any(Pred <= ThreshPop)) cat("WARNING: Pred hitting floor\n")
+  # if(any(NfitBreed <= ThreshPop)) cat("WARNING: NfitBreed hitting floor\n")
+  
   # Save herd numbers for the start of the final year (Nyr+1)
   for (Ibreed in 1:Nbreed)
     for (Ifeed in 1:Nfeed) NNS[Ibreed,Ifeed,Nyr+1] <- sum(NNN[Ibreed,Ifeed,Nyr+1,2:Nage]);
@@ -551,8 +577,21 @@ f <- function(parms,dat)
     }
     Jcnt <- Jcnt + 1;
   }
-
-  # Weak penalties for stability
+  
+  # SF devs as REs
+  LogLikeS <- 0
+  if(length(whichRS)>0){
+    SFsigma <- exp(log_SFsigma)
+    LogLikeS <- LogLikeS -sum(dnorm(SFdev,mean=0,sd=SFsigma,log=T))
+  }
+  
+  # Environmental index error
+  if(length(whichRE)>0){
+    sigmaEnv <- exp(log_sigmaEnv)
+    LogLikeS <- LogLikeS -sum(dnorm(epsEnv,mean=0,sd=sigmaEnv,log=T)) 
+  }
+  
+  # Weak penalties for stability (priors)
   Penal <- 0;
   Penal <- Penal2;
   for (Ibreed in 1:Nbreed) Penal <- Penal + 0.0001*logK[Ibreed]*logK[Ibreed];
@@ -561,10 +600,11 @@ f <- function(parms,dat)
   Penal <- Penal + logBK_sumSQ
   Penal <- Penal - sum(dnorm(SBdev,0.0,1.0,log=T));
   Penal <- Penal - sum(dnorm(FBdev,0.0,1.0,log=T));
+  # Penal <- Penal + sum(penv)
   # Penal <- Penal - sum(dnorm(SFdev,0.0,1.0,log=T)); # Take this out because driving directly with environment
   TotalK <- sum(BreedK)
   if (UseKPrior > 0)  Penal <- Penal - UseKPrior*log(1.0/(1.0+exp(Prior_int+Prior_slope*TotalK)))
-  datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b);
+  datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b) + LogLikeS;
   neglogL <-  Penal + datalike;
   #print(neglogL)
   
@@ -608,6 +648,7 @@ f <- function(parms,dat)
   REPORT(LogLike1);
   REPORT(LogLike2a);
   REPORT(LogLike2b);
+  REPORT(LogLikeS);
   REPORT(BreedK);
   REPORT(FeedK);
   REPORT(Mix);

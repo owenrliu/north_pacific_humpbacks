@@ -1,10 +1,13 @@
 # Correlate random deviations with environmental variables
 library(tidyverse)
 library(mgcv)
-
+library(here)
+library(rstan)
+library(RTMB)
 # Load "data" (devs from a Bayesian model)
 bayes <- read_rds(here('Diags','B2F1 FArS','B2F1BC_Bayes.rds'))
 mle <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
+source(here('code','full age structure','base_randomSDevs.R'))
 
 bayes_df <- summary(bayes)$summary |> as_tibble(rownames="parameter")
 bayes_thin <- bayes_df |> 

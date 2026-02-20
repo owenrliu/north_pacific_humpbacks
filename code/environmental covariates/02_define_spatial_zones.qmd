@@ -34,15 +34,17 @@ theme_set(theme_classic())
 
 Humpback whale breeding and feeding grounds shapefile, in native coordinates and shifted to 0-360 longitude to avoid the wraparound issue with the international dateline.
 
-```{r}
+```{r,fig.height=6,fig.width=8}
 zones <- read_sf(here('data','spatial','NPhump_zones_scenarios.shp'))
 zones_bbs <- map(zones$geometry,st_bbox)
   
 zones %>% 
   filter(B1|F1) %>% 
+  mutate(lab=ifelse(Feeding,"feeding","breeding")) |> 
   ggplot()+
-  geom_sf(aes(fill=factor(Feeding)))+
-  labs(fill="Feeding\nGround")+
+  geom_sf(aes(fill=lab))+
+  labs(fill="Type",x="",y="")+
+  scale_fill_manual(values=c("#97a6c4","#384860"))+
   theme_classic()+
   geom_sf_text(aes(label=Name))
 ```

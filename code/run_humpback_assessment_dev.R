@@ -10,17 +10,18 @@ source(here('code',"plotting_functions.R"))
 
 # Fitting Function
 DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
-                  SF=c(0,1,0,1,1,1),SigmaDevS=6,SigmaDevF=0.01,WithMirror=0,Yr1=1970,Yr2=2023,YrSDevs=1995, 
+                  SF=c(0,1,0,1,1,1),SigmaDevS=6,SigmaDevF=0.01,WithMirror=0,Yr1=1970,Yr2=2023,YrSDevs=2000, 
                   UseKPrior=1, Kmax=60000,
+                  rvars=NULL, # which parameters are random
                   AddCV=T,MixWeights=c(1,1),CatchSer="B",
-                  envOpt="none",
-                  AllPlots=F,DoBoot=F,BootUse,
+                  envOpt="none", splineK=5, EF= c(0,1,0,1,1,1), envlag=0,
+                  AllPlots=T,DoBoot=F,BootUse,
                   ByCatchFile="BycatchActual_2024_04_24.csv",
                   DataFileName= here('data',"Hump.dat"),
                   FullDiag=T,
                   # PlotsDir= paste0(here('plots'),"/"),
                   WghtTotal=1,Idirichlet=1,MaxN=100,seed=19101,
-                  DoBayes=F,SetNew=0,Init=NULL,subdir="")
+                  DoBayes=F,Init=NULL,subdir="")
 {
   
   cat("Doing ",paste0(Code,"-",SensCase)," using data file ",DataFileName,"\n")
@@ -43,7 +44,8 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   # i.e., choice about how to drive survival with environmental variables
   if(envOpt== 'none') source(here('code','full age structure','base.R'))
   if(envOpt== 'direct') source(here('code','full age structure','envDirect.R'))
-  if(envOpt== 'index') source(here('code','full age structure','envIndex.R'))
+  # if(envOpt== 'index') source(here('code','full age structure','envIndex.R'))
+  if(envOpt== 'ddOnly') source(here('code','full age structure','ddOnly.R'))
   if(envOpt== 'varK') source(here('code','full age structure','varK.R'))
   if(envOpt== 'randomS') source(here('code','full age structure','base_randomSDevs.R'))
   if(envOpt== 'index_randomS') source(here('code','full age structure','envIndex_randomSDevs.R'))
@@ -52,9 +54,15 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   # =================================================================================================================================
   
   if (FullDiag==T) print("Calling MakeADM")
-  if(envOpt=='randomS'|envOpt=="index_randomS") model <-MakeADFun(cmb(f,dat), parameters, random=c("SFdev"), map=map,DLL="Hump",silent=F)
-  if(envOpt=='varK') model <-MakeADFun(cmb(f,dat), parameters, random=c("Kdev"), map=map,DLL="Hump",silent=F)
-  else model <- MakeADFun(cmb(f,dat), parameters, map=map,DLL="Hump",silent=T)
+  model <- MakeADFun(cmb(f,dat), parameters,random=rvars, map=map,DLL="Hump",silent=F)
+  # if(envOpt=='randomS'|envOpt=="index_randomS") model <-MakeADFun(cmb(f,dat), parameters, random=c("SFdev"), map=map,DLL="Hump",silent=F)
+  # if(envOpt=='direct') model <-MakeADFun(cmb(f,dat), parameters, random=c("epsEnv","SFdev"), map=map,DLL="direct",silent=F)
+  # if(envOpt=='varK') model <-MakeADFun(cmb(f,dat), parameters, random=c("Kdev"), map=map,DLL="Hump",silent=F)
+  # # if(envOpt=='varK') model <-MakeADFun(cmb(f,dat), parameters, map=map,DLL="Hump",silent=F)
+  # else model <- MakeADFun(cmb(f,dat), parameters, map=map,DLL="Hump",silent=T)
+  
+  # testing
+  # model <- MakeADFun(cmb(f,dat),parameters,random=c("SFdev"),map=map,silent=F)
   
   # =================================================================================================================================
   # Optimize
@@ -62,53 +70,16 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   
   if (FullDiag==T) print("Calling Fit")
   FitBest  <- 1.0e20
-  if (SetNew==1) model$par <- Init
-  #rept <<- model$report(model$par)
-  #AAA
-  if (SetNew==0)
-  {
-    fit <- nlminb(model$par, model$fn, model$gr,verbose=T)
-    while(abs(FitBest-fit$objective)>0.01)
-    {
+  fit <- nlminb(model$par, model$fn, model$gr,verbose=T)
+  while(abs(FitBest-fit$objective)>0.01){
       FitBest <- fit$objective
       fit <- nlminb(fit$par, model$fn, model$gr,verbose=T)
       if (FullDiag==T) print(fit$objective)
-    }
   }
-  if (SetNew==3)
-  {
-    fit <- optim(model$par, model$fn, model$gr)
-    fit$objective <- fit$value
-    while(abs(FitBest-fit$objective)>0.01)
-    {
-      FitBest <- fit$objective
-      fit <- nlminb(fit$par, model$fn, model$gr,verbose=T)
-      if (FullDiag==T) print(fit$objective)
-    }
-  }
-  if (SetNew==2)
-  {
-    fit <- optim(model$par, model$fn,model$gr,method="CG")
-    print(fit)
-    vv <-model$report(fit$par)
-    while(abs(FitBest-fit$value)>0.01)
-    {
-      FitBest <- fit$value
-      print(model$fn(fit$par))
-      fit <- optim(fit$par, model$fn, model$gr,method="CG")
-      vv <-model$report(fit$par)
-      print(model$fn(fit$par))
-      fit <- nlminb(fit$par, model$fn, model$gr,verbose=T)
-      vv <-model$report(fit$par)
-      print(model$fn(fit$par))
-      fit$value <- fit$objective
-      if (FullDiag==T) print(fit$value)
-    }
-  }
-  
+
   # Save model
   fildir <- here("Diags",subdir)
-  if(!dir.exists(fildir)) dir.create(fildir)
+  if(!dir.exists(fildir)) dir.create(fildir,recursive = T)
   readr::write_rds(model,paste0(fildir,"/",Code,SensCase,"_TMB.rds"))
   # =================================================================================================================================
   # Extract Results
@@ -131,7 +102,8 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   SurvOutB<- rep[Index,]
   Index <- which(rownames(rep)=="SurvOutF")
   SurvOutF<- rep[Index,]
-  cat("final",rept$neglogL,rept$datalike,rept$Penal,rept$LogLike1,rept$LogLike2a,rept$LogLike2b,"\n")
+  cat("final nll:",rept$neglogL,"\nTotal data likelihood:",rept$datalike,"\nTotal penalty:",rept$Penal,
+      "\nSurvey likelihood:",rept$LogLike1,"\nMixing BtF likelihood:",rept$LogLike2a,"\nMixing FtB likelihood",rept$LogLike2b,"\n")
   #print(exp(LogNT))
   
   # Stuff to pass to other routines
@@ -159,29 +131,48 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
   if(AllPlots){
     obj <- list(Code=Code,SensCase=SensCase,input=dat,report=rept,sdreport=rep,sdfixed=rep2)
     fildir <- here("plots",subdir)
-    if(!dir.exists(fildir)) dir.create(fildir)
-    plot_title <- paste0(fildir,"/",Code,"-",SensCase)
-    p1 <- plot_abundance(obj=obj,opt = "total")
-    p2 <- plot_abundance(obj=obj,opt= "breed")
-    p3 <- plot_abundance(obj=obj,opt="feed")
-    p4 <- plot_proportions(obj,direction="B-F")
-    p5 <- plot_proportions(obj,direction="F-B")
-    p6 <- plot_survival(obj,opt = "F")
-    if(envOpt=="varK"){
-      p7 <- plot_varK(obj)
-      ggsave(paste(plot_title,"varying K.png"),p7,height=6,width=8)
-    }
-    ggsave(paste(plot_title,"total abundance.png"),p1,height=4,width=6)
-    ggsave(paste(plot_title,"breeding ground abundance.png"),p2,height=6,width=9)
-    ggsave(paste(plot_title,"feeding ground abundance.png"),p3,height=6,width=9)
-    ggsave(paste(plot_title,"proportions breed to feed.png"),p4,height=5,width=10)
-    ggsave(paste(plot_title,"proportions feed to breed.png"),p5,height=5,width=10)
-    ggsave(paste(plot_title,"feeding ground survival.png"),p6,height=6,width=8)
-
+    if(!dir.exists(fildir)) dir.create(fildir,recursive = T)
     
-    png(paste(plot_title,"mixing.png"),width = 1000,height=1000,units='px')
-    plot_mixing(obj=obj)
-    dev.off()
+    suppressWarnings({
+      plot_title <- paste0(fildir,"/",Code,"-",SensCase)
+      # basic fixed effect parameters (minus environmental covariates)
+      p0 <- plot_fixed_p(obj = obj)
+      # abundance plots
+      p1 <- plot_abundance(obj=obj,opt = "total")
+      p2 <- plot_abundance(obj=obj,opt= "breed")
+      p3 <- plot_abundance(obj=obj,opt="feed")
+      # Mixing parameters plots
+      p4 <- plot_proportions(obj,direction="B-F")
+      p5 <- plot_proportions(obj,direction="F-B")
+      p13 <- plot_mixing(obj)
+      # Survival plots
+      p6 <- plot_survival(obj,opt = "F")
+      p7 <- plot_survival_curve(obj,opt="F")
+      # Mortality plots
+      p8 <- plot_mortdiff(obj,opt="feed",type="raw")
+      p9 <- plot_compare_mort(obj,opt="feed",type="rate")
+      p10 <- plot_compare_mort(obj,opt="total",type="rate")
+      p11 <- plot_compare_mort(obj,opt="total",type="cumulative")
+
+      ggsave(paste(plot_title,"fixed effects.png"),p0,height=6,width=9)
+      ggsave(paste(plot_title,"total abundance.png"),p1,height=4,width=6)
+      ggsave(paste(plot_title,"breeding ground abundance.png"),p2,height=6,width=9)
+      ggsave(paste(plot_title,"feeding ground abundance.png"),p3,height=6,width=9)
+      ggsave(paste(plot_title,"proportions breed to feed.png"),p4,height=5,width=10)
+      ggsave(paste(plot_title,"proportions feed to breed.png"),p5,height=5,width=10)
+      ggsave(paste(plot_title,"feeding ground survival.png"),p6,height=6,width=8)
+      ggsave(paste(plot_title,"environment vs survival.png"),p7,height=6,width=8)
+      ggsave(paste(plot_title,"mortality feeding grounds.png"),p8,height=6,width=8)
+      ggsave(paste(plot_title,"mortality rate feeding grounds.png"),p9,height=6,width=8)
+      ggsave(paste(plot_title,"mortality rate total.png"),p10,height=4,width=6)
+      ggsave(paste(plot_title,"cumulative total mortality.png"),p11,height=4,width=6)
+      ggsave(paste(plot_title,"mixing.png"),p13,width=10,height=8)
+      if(envOpt=="varK"){
+        p12 <- plot_varK(obj)
+        ggsave(paste(plot_title,"varying K.png"),p12,height=6,width=8)
+      }
+      })
+    
   }
   
   # =================================================================================================================================
@@ -209,7 +200,7 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
     # print(summary(mcmcout))
     # create file directory if it does not exist yet
     fildir <- here("Diags",subdir)
-    if(!dir.exists(fildir)) dir.create(fildir)
+    if(!dir.exists(fildir)) dir.create(fildir,recursive = T)
     # save Bayes out
     readr::write_rds(mcmcout,paste0(fildir,"/",Code,SensCase,"_Bayes.rds"))
   }
@@ -224,7 +215,7 @@ DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,
 Bootstrap <- function(Code,dat,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,Nboot=2,seed=19101,BootUse,bestOrig,envOpt,subdir=""){
   
   fildir <- here("Diags",subdir)
-  if(!dir.exists(fildir)) dir.create(fildir)
+  if(!dir.exists(fildir)) dir.create(fildir,recursive=T)
   FileNameBoot <- paste0(fildir,"/",Code,".Boot")
   
   write("",FileNameBoot)
@@ -356,37 +347,53 @@ Bootstrap <- function(Code,dat,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,
 # ==========================================================================================
 # THIS IS WHERE ALL THE ACTION HAPPENS- ACTUALLY RUN THE MODEL
 ###################################################################################################
-### TESTING ZONES
-# Base model (no environmental drivers, with mirroring of survival
-xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAbase",envOpt="none",SF=c(0,1,0,1,1,1),YrSDevs=2000,WithMirror = 1,AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
-# Base model, direct driving of survival for all feeding grounds
-xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAenvDirect",envOpt="direct",SF=c(1,1,1,1,1,1),YrSDevs=1995,WithMirror = 0,AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
-# Base model, environmental index of survival
-xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAenvIndex",envOpt="index",SF=c(0,1,0,1,1,1),YrSDevs=2000,WithMirror = 1, AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
-# Variable K model
-xx <- DoRun(Code="B2F1",SensCase="BC",subdir="B2F1 FAvarK",envOpt="varK",SF=c(1,1,1,1,1,1),YrSDevs=2000,WithMirror = 0, AllPlots=T,DoBoot=F,Init=NULL,SetNew=0)
-# With survival as random effects
+### TESTING ZONE
+# Survival as random effect
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",
+            SensCase="BC",subdir="B2F1 rS/no RUS_WAL",
+            envOpt="randomS",
+            rvars=c("SFdev"),
+            SF=c(0,1,1,1,1,1), WithMirror=0,
+            EF=c(0,0,0,0,0,0))
+# environment direct
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 direct/no RUS_WAL",
+            envOpt="direct",
+            rvars=c("epsEnv"),
+            SF=c(0,1,1,1,1,1), WithMirror=0,
+            EF=c(0,1,1,1,1,1))
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 direct/no RUS_WAL lag1",
+            envOpt="direct",
+            rvars=c("epsEnv"), envlag = 1, # environment vars lagged 1 year
+            SF=c(0,1,1,1,1,1), WithMirror=0,
+            EF=c(0,1,1,1,1,1))
+# density-dependent survival only, but with no environmental drivers and no variation in K
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FAdd",
+            envOpt="ddOnly", UseKPrior = 1, Kmax=60000,
             SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
-            DoBayes = F,Init=NULL,SetNew=0)
-# (with Bayesian sampling)
+            DoBayes = F,Init=NULL)
+# environmental index with variable K
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",
+            SensCase="BC",subdir="B2F1 FAvarK",
+            envOpt="varK", UseKPrior = 1, Kmax=60000,
             SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
-            DoBayes = T,Init=NULL,SetNew=0)
-# environmental index with survival as random effects
-xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FAenvIndex_rS",envOpt="index_randomS",
-            SF=c(0,1,0,1,1,1),WithMirror = 1,AllPlots=T,DoBoot=F,
-            DoBayes = F,Init=NULL,SetNew=0)
-
-# environmental index with random K
-xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FAvarK",envOpt="varK",
-            SF=c(0,1,0,1,1,1),WithMirror = 1,AllPlots=T,DoBoot=F,
-            DoBayes = F,Init=NULL,SetNew=0)
+            DoBayes = F,Init=NULL)
 ###################################################################################################
+# Bayesian Versions
+###################################################################################################
+
+# Survival as random effect (with Bayesian sampling)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FArS",envOpt="randomS",
+            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            DoBayes = T,Init=NULL)
+# environment direct (with Bayesian sampling)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="B2F1 FAenvDirect",envOpt="direct",
+            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            DoBayes = T,Init=NULL)
 
 # Boostraps (BootUse is used to trap horrible bootstraps)
 # if (Case==4)

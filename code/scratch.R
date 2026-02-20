@@ -1,8 +1,133 @@
 library(tidyverse)
 library(here)
 
-# trying to understand shape of survival functions
+#######################
+# Run all this to seed the DoRun function
+Code="B2F1";SensCase="BC";StochSopt=1;StrayBase=0;
+IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
+SF=c(1,1,1,1,1,1); WithMirror=0;
+UseKPrior=1; Kmax=60000;
+YrSDevs=2000;
+rvars=NULL;
+envOpt="direct";splineK=7; EF=c(0,1,1,1,1,1);envlag=0;
+SigmaDevS=6;SigmaDevF=0.01;Yr1=1970;Yr2=2023;
+AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
+ByCatchFile="BycatchActual_2024_04_24.csv";
+DataFileName= here('data',"Hump.dat");
+FullDiag=T;
+WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
+Init=NULL;Nage=11;DoBayes=F;
 
+subdir = "B2F1 FAenvDirect"
+
+# =================================================================================================================================
+# Checking and Debugging
+# =================================================================================================================================
+
+# A fitted model obj
+model <- read_rds(here('Diags','B2F1 FAvarK','B2F1BC_TMB.rds'))
+fit <- nlminb(model$par, model$fn, model$gr,verbose=T)
+
+# Check gradients
+grad <- model$gr(fit$par)
+names(fit$par)[abs(grad) > 0.01]  # Should be empty at convergence
+
+#get a list of parameters
+parms <- model$env$parList()
+lastpar <- model$env$last.par
+lastparbest <- model$env$last.par.best
+
+# Check the Hessian with the most recent fit
+hess <- model$he(fit$par)
+# (if a model with random effects, you could do this over the fixed effects only)
+marg_hess <- optimHess(fit$par, model$fn, model$gr)
+hess <- marg_hess
+
+eigen(hess)$values  # Look for values near zero or negative
+
+cat("Any NaN in Hessian:", any(is.nan(hess)), "\n")
+cat("Any Inf in Hessian:", any(is.infinite(hess)), "\n")
+eigs <- eigen(hess)$values
+cat("Min eigenvalue:", min(eigs), "\n")
+cat("Near-zero eigenvalues:", sum(abs(eigs) < 1e-6), "\n")
+
+# 2. Find which parameters correspond to near-zero eigenvalues
+eig_decomp <- eigen(hess)
+# The smallest eigenvalue indicates the "flattest" direction in the likelihood
+# Find the eigenvector for the smallest eigenvalue
+problematic_evec <- eig_decomp$vectors[, which.min(abs(eigs))]
+# Find the parameters with large loadings onto the problematic eigenvector
+names(fit$par)[abs(problematic_evec) > 0.1]
+# Parameters with large loadings on the flat direction are your problem
+
+# For all of the smallest eigenvalues
+nearzero_eig <- which(abs(eigs) < 1e-6)
+parnames_temp <-paste(names(fit$par),1:length(fit$par))
+map(nearzero_eig,\(x){
+  problematic_evec <- eig_decomp$vectors[, x]
+  parnames_temp[abs(problematic_evec) > 0.1]
+}) |> unlist() |> unique() |> sort()
+
+
+# Run the objective function with the parameters from a fit
+list2env(parameters,envir=environment())
+parNew <- model$env$parList() |> map(unname)
+parNew <- split(fit$par,names(fit$par)) |> map(unname)
+test <- f(parNew,dat)
+
+# Fix some parameter and re-fit
+mapNew <- model$env$map
+mapNew$logK <- factor(rep(NA,length(parameters$logK)))
+parmsNew <- parameters
+parmsNew$logK <- c(8.449,10.81,9.23,9.99,8.49)
+modelNew <- MakeADFun(cmb(f,dat), parmsNew, map=mapNew,DLL="Hump",silent=T)
+fitFix <- nlminb(modelNew$par, modelNew$fn, modelNew$gr,verbose=T)
+
+# =================================================================================================================================
+# Load Results/Outputs
+# =================================================================================================================================
+
+obj <- read_rds(here('Diags','B2F2 FAbase','B2F2BC.rds'))
+obj <- read_rds(here('Diags','B2F1 FAenvIndex_rS','B2F1BC.rds'))
+obj <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
+obj <- read_rds(here('Diags','B2F1 FAenvDirect','B2F1BC.rds'))
+obj <- read_rds(here('Diags','B2F1 FAvarK','B2F1BC.rds'))
+obj <- read_rds(here('Diags','B2F1 FAdd','B2F1BC.rds'))
+###
+
+# Reports and outputs
+# all fixed effects
+sdr <- obj$sdfixed
+# all REPORTed things
+rept <- obj$report
+# all ADREPORTed things
+adr <- obj$sdreport
+
+# Amounts of data we're actually fitting to
+Surveys <- read_csv(here('Diags','SurveyUse',paste0(obj$Code,obj$SensCase,".csv")),show_col_types = F)
+dt <- Surveys |> count(Area,Component)
+
+### Comparing results
+obj1 <- read_rds(here("Diags","B2F1 direct/no RUS_WAL","B2F1BC.rds"))
+obj2 <- read_rds(here('Diags','B2F1 FAenvDirect','B2F1BC.rds'))
+obj3 <- read_rds(here('Diags','B2F1 FAvarK','B2F1BC.rds'))
+obj4 <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
+obj5 <- read_rds(here('Diags','B2F1 FAdd','B2F1BC.rds'))
+
+objlist <- list(obj4,obj5,obj2)
+scen.names <- c("Random","Density-dependence","Environment")
+
+plot_compare_abundance(objlist,scen.names)
+plot_compare_abundance(objlist,scen.names,opt='feed')
+plot_compare_abundance(objlist,scen.names,opt='breed')
+
+plot_compare_FEs(objlist,scen.names,effect = c("logK"))
+plot_compare_FEs(objlist,scen.names,effect = c("rval"))
+plot_compare_S(objlist,scen.names)
+
+#-------------------EQUATION TESTING-------------------------#
+
+# trying to understand shape of survival functions
 foo1 <- function(S) log(1/S-1) # eq. B.6b in Appendix X
 
 foo1(0.96)
@@ -16,241 +141,170 @@ foo2 <- function(eps,S,sig){ # eq. B.6a in Appendix X
   1/(1+exp(foo1(S)+eps*sig))
 }
 
-test2 <- crossing(eps=seq(0.01,0.99,length.out=50),S=c(0.8,0.9,0.96,0.99)) %>% 
-  mutate(Sout=foo2(eps,S,sig=6))
+test2 <- crossing(eps=seq(0.01,0.99,length.out=50),
+                  S=c(0.8,0.96),
+                  sig=seq(0,6,by=2)) %>% 
+  mutate(Sout=foo2(eps,S,sig))
 glimpse(test2)
 
-test2 %>% ggplot(aes(eps,Sout,color=ordered(S)))+geom_line(linewidth=1.25)+theme_classic()+labs(color="Baseline S",x=expression(epsilon))
+test2 %>% 
+  ggplot(aes(eps,Sout,color=ordered(S)))+
+  geom_line(linewidth=1.25)+
+  facet_wrap(~sig,labeller = label_bquote(sigma==.(sig)))+
+  theme_minimal()+
+  labs(color="Baseline S",x=expression(epsilon),
+       y="Survival")+
+  theme(strip.text = element_text(size=12),
+        panel.border = element_rect(color='black',fill=NA))
 
 
-#######################
-# Run all this to seed the DoRun function
-Code="B2F1";SensCase="BC";StochSopt=1;StrayBase=0;
-IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
-SF=c(0,1,0,1,1,1); WithMirror=T
-UseKPrior=1; Kmax=60000;
-YrSDevs=2000;
-envOpt="varK";
-SigmaDevS=6;SigmaDevF=0.01;Yr1=1970;Yr2=2023;
-AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
-ByCatchFile="BycatchActual_2024_04_24.csv";
-DataFileName= here('data',"Hump.dat");
-FullDiag=T;
-WghtTotal=1;Idirichlet=1;MaxN=100;seed=19101;
-SetNew=0;Init=NULL;Nage=11;DoBayes=T;
-
-subdir = "B2F1 FAvarK"
-
-# =================================================================================================================================
-# Checking and Debugging
-# =================================================================================================================================
-
-# Gradient checking
-fit$par
-model$gr(fit$par)
-
-#get a list of parameters
-parms <- model$env$parList()
-lastpar <- model$env$last.par
-lastparbest <- model$env$last.par.best
-
-# Checking the Hessian
-sqrt(diag(solve(model$he())))
-# Errors prob indicate non-invertible Hessian
-# Error in solve.default(a, b) : 
-#   system is computationally singular: reciprocal condition number = 8.08535e-31
-
-# Run the model function with the parameters from a fit
-parNew <- model$env$parList() |> map(unname)
-parNew <- split(fit$par,names(fit$par)) |> map(unname)
-test <- f(parNew,dat)
-
-### Pulling a result
-obj <- read_rds(here('Diags','B2F2 FAbase','B2F2BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAenvIndex_rS','B2F1BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
-###
-
-# Reports and outputs
-sdr <- obj$sdfixed
-rept <- obj$report
-# all ADREPORTed things
-adr <- obj$sdreport
-
-# survival
-survOut <- obj$report$SurvOutF |> as.numeric()
-SFdevOut <- adr[grepl("SFdevYr",row.names(adr)),1]
-survOutdf <- tibble(SurvOutF=survOut,
-                    SFdevYr=SFdevOut,
-                    zoneID=rep(as.character(obj$input$FeedNames),length(obj$input$Yr1:obj$input$Yr2)),
-                    year=rep(obj$input$Yr1:obj$input$Yr2,each=length(obj$input$FeedNames)))
-survOutdf |> 
-  filter(year>1999) |> 
-  ggplot(aes(SFdevYr))+
-  geom_histogram()
-survOutdf |> 
-  ggplot(aes(SFdevYr,SurvOutF,color=zoneID))+
-  geom_point()
-survOutdf |> 
-  ggplot(aes(year,SurvOutF,color=zoneID))+
-  geom_line()+
-  facet_wrap(~zoneID)
-survOutdf |> 
-  ggplot(aes(year,SFdevYr,color=zoneID))+
-  geom_line()+
-  facet_wrap(~zoneID)
-
-# omegas
-omegasst <- adr[grepl("omega_sst",row.names(adr)),]
-omegachl <- adr[grepl("omega_chl",row.names(adr)),]
-
-## Abundance indices from sdreport
-yrs <- pluck(obj,"input","Years")
-numyr <- length(yrs)
-abund <- pluck(obj,"sdreport") |> 
-  as_tibble(rownames="param") |> 
-  filter(param=="LogNT") |> 
-  # replicate dimensions of LogNT (year columns by component rows)
-  mutate(year=rep(as.integer(yrs),each=3),component=rep(c("1+","2+","Mature"),numyr)) |> 
-  set_names(c("param","total.ln","sd.abun","year","component")) |> 
-  mutate(total=exp(total.ln)) |> 
-  mutate(upper=exp(total.ln+1.96*sd.abun),lower=exp(total.ln-1.96*sd.abun))
-
-# Developing output writing code:
-# Abbrev = SensCase;
-# rept <- model$report()
-# best <- model$env$last.par.best
-# stdreport <-sdreport(model)
-# rep <- summary(stdreport)
-# rep2<- summary(stdreport, "fixed", p.value = TRUE)
-# WriteOut(Code,Abbrev=SensCase,Yr1=Yr1,Yr2=Yr2,BreedNames=BreedNames,FeedNames=FeedNames,
-#          rept=rept,rep=rep,rep2=rep2,StockDef=StockDef,data=dat,subdir = subdir)
-
-### Comparing results
-
-obj1 <- read_rds(here('Diags','B2F2 base','B2F2BC.rds'))
-obj2 <- read_rds(here('Diags','B2F2 index','B2F2BC.rds'))
-obj3 <- read_rds(here('Diags','B2F2 varK','B2F2BC.rds'))
-obj4 <- read_rds(here('Diags','B2F2 direct','B2F2BC.rds'))
-objlist <- list(obj1,obj4,obj2,obj3)
-scen.names <- c("Base","Direct","Index","VarK")
-objlist <- list(obj1,obj4,obj2,obj3)
-scen.names <- c("Base","Direct","Index","VarK")
-plot_compare_abundance(objlist,scen.names)
-
-
-# Calculate kdevs
-foor <- function(K1,K2,N,Sb=0.96){
-  Sb*(1-(N/K2-N/K1))
+# Calculating kdevs
+foor <- function(Kd,h=1.5,l=0.5,medK=10000){
+  # Bounded logit
+  # l+(h-l)*1/(1+exp(-Kd))
+  
+  # B-H
+  # h/(1+exp(-Kd))
+  
+  # Stewart et al.
+  medK*exp(Kd)
 }
-foor(K1=10000,K2=9000,N=7500)
-# what if we alter survival by 1 minus the diff in depletion
+tibble(Kd=rnorm(100,0,1)) |> 
+  mutate(out=foor(Kd)) |> 
+  ggplot(aes(Kd,out))+
+  geom_point()
 
-# Get MortDiff
-md <- rept$MortDiff*-1 # switch sign
-bn <-obj$input$BreedNames |> as.character()
-fn <- obj$input$FeedNames |> as.character()
-yrs <- obj$input$Yr1:obj$input$Yr2
-mddf <- tibble(md=as.numeric(md),
-               breed=rep(rep(bn,length(fn)),length(yrs)),
-               feed=rep(rep(fn,each=length(bn)),length(yrs)),
-               year=rep(yrs,each=length(fn)*length(bn))) |> 
-  mutate(across(where(is.list),as.character)) |> 
-  unite(herd,breed,feed,remove = F)
-mddf |> 
-  ggplot(aes(year,md,color=herd))+
-  geom_line()+
-  theme_minimal()
-
-mddf |> 
-  ggplot(aes(year,md))+
-  geom_line()+
-  facet_grid(feed~breed)+
-  theme_minimal()
-# cumulative
-cume_mort_df <- mddf |> 
-  group_by(herd) |> 
-  arrange(year) |> 
-  mutate(cume_md=cumsum(md)) |> 
-  filter(last(cume_md)!=0)
-cume_mort_df |> 
-  ggplot(aes(year,cume_md,color=herd,fill=herd))+
-  # geom_line()+
-  # geom_area()+
-  geom_col()+
-  theme_classic()
-
-# Catch data?
-catchb <- tibble(catchb=as.numeric(obj$input$CatchB),
-                 breed=rep(bn,each=length(yrs)),
-                 year=rep(yrs,length(bn))) |> 
-  group_by(breed) |> 
-  arrange(year) |> 
-  mutate(cume_catchb=cumsum(catchb))
-catchf <- tibble(catchf=as.numeric(obj$input$CatchF),
-                 feed=rep(fn,each=length(yrs)),
-                 year=rep(yrs,length(fn))) |> 
-  group_by(feed) |> 
-  arrange(year) |> 
-  mutate(cume_catchf=cumsum(catchf))
-
-catchb |> 
-  ggplot(aes(year,cume_catchb,color=breed,fill=breed))+
-  # geom_line()+
-  geom_area()+
-  theme_classic()
-catchf |> 
-  ggplot(aes(year,cume_catchf,color=feed,fill=feed))+
-  # geom_line()+
-  geom_area()+
-  theme_classic()
-
-# combined
-mdc <- cume_mort_df |> 
-  group_by(year) |> 
-  summarise(cumemort=sum(cume_md),
-            mort=sum(md),
-            .groups="drop")
-cb <- catchb |> ungroup() |> 
-  group_by(year) |> 
-  summarise(cume_catchb=sum(cume_catchb),
-            catchb=sum(catchb),
-            .groups='drop')
-cf <- catchf |> ungroup() |> 
-  group_by(year) |> 
-  summarise(cume_catchf=sum(cume_catchf),
-            catchf=sum(catchf),
-            .groups='drop')
-mdc <- mdc |> 
-  left_join(cb) |> 
-  left_join(cf) |> 
-  pivot_longer(contains('cume'),names_to='cumetype',values_to='cumemort') |> 
-  pivot_longer(mort:catchf,names_to='type',values_to='mort')
-
-mdc |> 
-  ggplot(aes(year,cumemort,fill=cumetype,color=cumetype))+
-  geom_col()+
-  theme_minimal()+
-  labs(y="cumulative mortality")
-
-# mortality rates
-# total abun
-NNS <- pluck(rept,"NNS")
-nyrs <- length(yrs)+1
-babun <- tibble(abun=as.numeric(NNS),
-                breed=rep(rep(bn,length(fn)),nyrs),
-                feed=rep(rep(fn,each=length(bn)),nyrs),
-                year=rep(c(yrs,max(yrs)+1),each=length(fn)*length(bn)))
-tabun <- babun |> 
-  group_by(year) |> 
-  summarise(tot=sum(abun))
-
-rate <- mdc |> 
-  left_join(tabun) |> 
-  mutate(mortrate=mort/tot)
-rate |> 
-  ggplot(aes(year,mortrate,fill=type,color=type))+
-  # geom_col()+
+# density dependent survival calc?
+fooh <- function(base_s,beta,depl){
+  # Linear
+  # survival to mort0
+  # m0 <- -log(base_s)
+  # Sy <- exp(-m0*(1+beta*depl))
+  # Sy
+  # # annual survival to instantaneous hazard
+  # base_haz=log(1/base_s-1)
+  # haz <- exp(base_haz+beta*depl)
+  # exp(-haz)
+  
+  # B-H
+  Sy <- base_s/(1+beta*depl)
+  
+  # Ricker
+  # Sy <- base_s*exp(-beta*depl)
+  Sy
+}
+crossing(depl=seq(0,1.2,by=0.05),base_s=0.96,beta=seq(0,6,by=1)) |> 
+  mutate(surv=fooh(base_s,beta,depl)) |> 
+  ggplot(aes(depl,surv,color=ordered(beta)))+
   geom_line()+
   theme_minimal()+
-  labs(y="Mortality rate/ind./yr")
+  labs(color=expression(beta),x="Depletion",y="Survival")+
+  theme(panel.border=element_rect(color='black',fill=NA))
+
+# density-dependent fecundity with varying K?
+foof <- function(rval=0.09,Amat=8,SA=0.96,SC=0.8,betaK=4,Depl){
+  fmax <- 2*(exp(rval*(Amat+1.0))-SA*exp(rval*Amat))/(SC*SA^(Amat))
+  f0 <- 2*(1.0-SA)/(SC*SA^(Amat))
+  # print(c(f0,fmax))
+  # Fecundity at carrying capacity
+  # ParA <- (fmax-f0)/f0
+  # # ParA
+  # # ft <- -log(fmax)
+  # # fout <- exp(-ft*(1+betaK*Depl))
+  # # fout <- exp(fmax*(1+betaK*Depl))
+  # 
+  # Term1 <- f0*(1.0+ParA*exp(1.0-Depl));
+  # print(Term1)
+  # Term1 <- 0.0001+(Term1-0.0001)/(1+exp(-30.0*Term1))
+  # Term1
+  
+  # B-H
+  # fout <- f0+(fmax-f0)/(1+betaK*Depl)
+  fout <- fmax/(1+betaK*Depl)
+  fout
+  
+  # 
+}
+foof(SA=0.9,Depl=50)
+crossing(SA=seq(0.98,0.7,by=-0.02),Depl=seq(0,1.5,by=0.1)) |> 
+  mutate(fec=foof(SA=SA,Depl=Depl,betaK=1)) |> 
+  ggplot(aes(Depl,fec,color=SA))+
+  geom_point()+
+  theme_minimal()+
+  theme(panel.border=element_rect(color='black',fill=NA))
+
+tibble(Depl=seq(0,1.4,by=0.02)) |> 
+  mutate(out=foof(Depl=Depl)) |> 
+  ggplot(aes(Depl,out))+
+  geom_point()
+
+foofec <- function(f0=0.129,ParA=5.891,Depl=0.01){
+  
+  Term1 <- f0*(1.0+ParA*(1.0-Depl));
+  print(Term1)
+  Term1 <- 0.0001+(Term1-0.0001)/(1+exp(-30.0*Term1))
+  # print(Term1)
+  # # Term1 <- fmax
+  # # print(paste("Term 1:",Term1," Depletion:",Depl))
+  # LogitFec <- log(1.0/Term1-1.0);
+  # Term1 <- 1.0/(1.0+exp(LogitFec));
+  Term1
+}
+tibble(depl=seq(0,2,by=0.1)) |> 
+  mutate(fec=foofec(Depl=depl)) |> 
+  ggplot(aes(depl,fec))+
+  geom_point()
+
+#--------------------------------------------------------------------------------
+# Alluvial plot of mixing
+library(ggalluvial)
+library(viridis)
+BreedNames <- pluck(obj,'input','BreedNames') |> as.character()
+FeedNames <- pluck(obj,'input','FeedNames') |> as.character()
+m <- pluck(obj,'report','Mix')
+rownames(m) <- BreedNames
+colnames(m) <- FeedNames
+test <- as_tibble(m,rownames="Breed") |> pivot_longer(-Breed,names_to="Feed",values_to="Proportion") |> mutate(id=row_number())
+ggplot(test,aes(y=Proportion,axis1=Breed,axis2=Feed))+
+  geom_alluvium(aes(fill=Breed))+
+  geom_stratum(width=1/12,fill='black',color='white')+
+  geom_text(stat="stratum",aes(label=after_stat(stratum)),angle=90,color='white')+
+  theme_classic()+
+  scale_fill_manual(values=viridis_pal(option="H")(5),guide='none')+
+  theme(panel.border = element_rect(fill=NA,color='black'),
+        axis.text=element_blank(),
+        axis.ticks = element_blank(),
+        axis.title=element_text(size=16))+
+  labs(y="Breeding Ground")+
+  scale_y_continuous(expand=c(0,0),sec.axis = sec_axis(~., name = "Feeding Ground"))+
+  scale_x_continuous(expand=c(0,0))
+
+#--------------------------------------------------------------------------------
+
+# SPLINES!
+# first you need to set up the data
+library(mgcv)
+yrdat <- data.frame(year=as.numeric(obj$input$YrSDevs:obj$input$Yr2))
+spline_setup <- smoothCon(
+  s(year, k=3),
+  data = yrdat,
+  absorb.cons = TRUE
+)[[1]]
+X_yr_obs <- spline_setup$X
+S_yr <- spline_setup$S[[1]]
+n_spline_coef <- ncol(X_yr_obs)
+
+# Then in RTMB, you'd have something like 
+yday_effect_bin <- sum(X_yr_obs[i, ] * beta_yday_bin)
+
+# Where
+for (j in 1:n_spline_coef) {
+  beta_yday_bin[j] %~% dnorm(0, sigma_spline_bin, log = TRUE)
+}
+
+mcycle = MASS::mcycle
+smoothCon(
+  s(times, k=3),
+  data = mcycle,
+  absorb.cons = TRUE
+)[[1]]

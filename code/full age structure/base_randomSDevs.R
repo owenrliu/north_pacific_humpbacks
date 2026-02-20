@@ -96,22 +96,22 @@ f <- function(parms,dat)
   # Penalty on fmax
   Penal2 <- 100.0/(1+exp(-1000.0*(fmax-0.98)));
   
-  # Extract the SBdevs
-  SBdevPnt <- 1;
-  SBdevYr <- matrix(0,nrow=Nbreed,ncol=Nyr);
-  for (Ibreed in 1:Nbreed)
-    if (SBdevEst[Ibreed] > 0)
-      for (Year in SBdevMat[Ibreed,1]:SBdevMat[Ibreed,2])
-      { SBdevYr[Ibreed,Year+1] <- SBdev[SBdevPnt]; SBdevPnt <- SBdevPnt + 1; }
+ 
+  # Extract the SFdevs
+  # SFdevPnt <- 1;  )
+  SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
+  YrMatch=Nyr-(Yr2-YrSDevs)
+  whichFeed <- which(SF==1)
+  SFdevYr[whichFeed,YrMatch:Nyr] <- SFdev
   
   # Extract the SFdevs
-  SFdevPnt <- 1;
-  SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr);
-  for (Ifeed in 1:Nfeed)
-    if (SFdevEst[Ifeed] > 0)
-      for (Year in SFdevMat[Ifeed,1]:SFdevMat[Ifeed,2])
-      { SFdevYr[Ifeed,Year+1] <- SFdev[SFdevPnt]; SFdevPnt <- SFdevPnt + 1; }
-  
+  # SFdevPnt <- 1;
+  # SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr);
+  # for (Ifeed in 1:Nfeed)
+  #   if (SFdevEst[Ifeed] > 0)
+  #     for (Year in SFdevMat[Ifeed,1]:SFdevMat[Ifeed,2])
+  #     { SFdevYr[Ifeed,Year+1] <- SFdev[SFdevPnt]; SFdevPnt <- SFdevPnt + 1; }
+  # 
   # Mirror as needed
   if (Nmirror>0)
     for (Im in 1:Nmirror)
@@ -119,6 +119,14 @@ f <- function(parms,dat)
       Imi = Mirror[Im,1]+1; Omi = Mirror[Im,2]+1;
       for (Year in 1:Nyr) SFdevYr[Omi,Year] <- SFdevYr[Imi,Year];
     }
+  
+  # Extract the SBdevs
+  SBdevPnt <- 1;
+  SBdevYr <- matrix(0,nrow=Nbreed,ncol=Nyr);
+  for (Ibreed in 1:Nbreed)
+    if (SBdevEst[Ibreed] > 0)
+      for (Year in SBdevMat[Ibreed,1]:SBdevMat[Ibreed,2])
+      { SBdevYr[Ibreed,Year+1] <- SBdev[SBdevPnt]; SBdevPnt <- SBdevPnt + 1; }
   
   # Extract the FBdevs
   FBdevPnt <- 1;
@@ -500,7 +508,7 @@ f <- function(parms,dat)
           ObsMixProp[Icnt,2] = SD;
           if (Obs > 0)
           {
-            if (Idirichlet == 0) LikeMixComp[Icnt] = -dnorm(Obs, Pred, SD2, log=T);
+            if (Idirichlet == 0) LikeMixComp[Icnt] = -dnorm(Obs, Pred, SD, log=T);
             if (Idirichlet == 1) LikeMixComp[Icnt] = -ObsMixBtoFO[IdataS,Ibreed]*Obs*log((Pred+0.0001)/Obs);
           }
           LogLike2a[Jcnt] <- LogLike2a[Jcnt] + LikeMixComp[Icnt];
@@ -533,7 +541,7 @@ f <- function(parms,dat)
           ObsMixProp[Icnt,2] = SD;
           if (Obs > 0)
           {
-            if (Idirichlet == 0) LikeMixComp[Icnt] <- -dnorm(Obs, Pred, SD2, log=T);
+            if (Idirichlet == 0) LikeMixComp[Icnt] <- -dnorm(Obs, Pred, SD, log=T);
             if (Idirichlet == 1) LikeMixComp[Icnt] <- -ObsMixFtoBO[IdataS,Ibreed]*Obs*log((Pred+0.0001)/Obs);
           }
           LogLike2b[Jcnt] <- LogLike2b[Jcnt] + LikeMixComp[Icnt];
@@ -544,6 +552,7 @@ f <- function(parms,dat)
   }
   
   # SF devs as REs
+  SFsigma <- exp(log_SFsigma)
   LogLikeSDevs <- -sum(dnorm(SFdev,mean=0,sd=SFsigma,log=T))
 
   # Weak penalties for stability
@@ -559,6 +568,10 @@ f <- function(parms,dat)
   
   TotalK <- sum(BreedK)
   if (UseKPrior > 0)  Penal <- Penal - UseKPrior*log(1.0/(1.0+exp(Prior_int+Prior_slope*TotalK)))
+  
+  ## SCALE THE PENALTY?
+  # Penal <- 10*Penal
+  
   datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+LogLikeSDevs;
   neglogL <-  Penal + datalike;
   # print likelihood?

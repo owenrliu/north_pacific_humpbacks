@@ -16,6 +16,14 @@ calcKPrior <- function(Kmax){
   KPriors
 }
 
+calcfmax <- function(rval,Amat,SA,SC){
+  fmax <- 2*(exp(rval*(Amat+1.0))-SA*exp(rval*Amat))/(SC*SA^(Amat))
+  fmax
+}
+calcf0 <- function(SA,SC,Amat){
+  f0 <- 2*(1.0-SA)/(SC*SA^(Amat))
+  f0
+}
 # MODEL
 # ========================================================================================
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
@@ -140,7 +148,7 @@ f <- function(parms,dat)
   BreedK <- exp(logK)
   # K by herd
   NNK <- BreedK*Mix
-  # K by feeding ground
+  # baseline K by feeding ground
   FeedK <- colSums(NNK)
   
   # ========================================================================================================================
@@ -149,18 +157,39 @@ f <- function(parms,dat)
   # calculate index
   whichfeed <- which(SF==1)
   env_index <- omega_sst*sst[whichfeed,]+omega_mld*mld[whichfeed,]
-  KdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr+1)
+  # Deviation in K is equal to the environmental index plus normal random error (stochasticity)
+  KdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
+  epsKFill <- matrix(Kdev,nrow=sum(SF),byrow=F) # fill with parameter Kdev
+  
   YrMatch <- ncol(KdevYr)-(Yr2-YrSDevs)
-  KdevFill <- matrix(Kdev,nrow=sum(SF),byrow=T) # fill with parameter Kdev
-  KdevYr[whichfeed,YrMatch:(Nyr+1)] <- KdevFill
-  # Modify MultK with the deviations deviations
-  # MultK <- MultK+KdevYr
-  # inv-logit type
-  # invLogitK <- 1-exp(KdevFill)/(1+exp(KdevFill))
-  # KdevYr[,YrMatch:(Nyr+1)] <- invLogitK
-  # Difference between Kdevs and environmental index
-  # Used in the likelihood if running the variable K version of the model
-  envPenal <- c(KdevFill-env_index)
+  # KdevYr tracks the deviations in K...
+  KdevYr[whichfeed,YrMatch:Nyr] <- env_index+epsKFill
+  # ...while KYr tracks the actual K values in each year/feeding ground
+  KYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
+  for (Year in 1:(Nyr)){
+    for (Ifeed in 1:Nfeed){
+      KYr[Ifeed,Year] <- FeedK[Ifeed]*exp(KdevYr[Ifeed,Year])
+    }
+  }
+  # Just the years with estimated deviations
+  # For a derived quantity (ADREPORT)
+  # varKYr <- KYr[whichfeed,YrMatch:Nyr]
+    
+  # print(KdevYr)
+  
+  # KdevFill <- matrix(Kdev,nrow=sum(SF),byrow=F) # fill with parameter Kdev
+  # KdevYr[whichfeed,YrMatch:Nyr] <- KdevFill
+
+  # envPenal <- c(KdevFill-env_index)
+
+  ## Mirror as needed
+  if (Nmirror>0)
+    for (Im in 1:Nmirror)
+    {
+      Imi = Mirror[Im,1]+1; Omi = Mirror[Im,2]+1;
+      for (Year in 1:Nyr) KdevYr[Omi,Year] <- KdevYr[Imi,Year];
+      for (Year in 1:Nyr) KYr[Omi,Year] <- KYr[Imi,Year];
+    }
   
   # ========================================================================================================================
   # Abundance Tracking Matrices
@@ -336,36 +365,73 @@ f <- function(parms,dat)
     # ========================================================================================================================
     # IN THIS MODEL VERSION, SURVIVAL IS DENSITY-DEPENDENT BASED ON VARIABLE K
     # Density-dependence is on feeding ground numbers
+    # update K multiplier with dev
+    # for(Ifeed in 1:Nfeed){
+    #   # Bounded logit- could change these bounds...
+    #   Khigh=1.5
+    #   Klow=0.5
+    #   MultK[Ifeed,Year] <- Klow+(Khigh-Klow)*1/(1+exp(-KdevYr[Ifeed,Year]))
+    # }
     for (Ibreed in 1:Nbreed){
       for (Ifeed in 1:Nfeed){
         if (MixI[Ibreed,Ifeed] != 0){
-          
           # Survival (density-dependent)
-          # update K multiplier with dev
-          MultK[Ifeed,Year] <- MultK[Ifeed,Year]+KdevYr[Ifeed,Year]
-          # difference in depletion between base K and MultK
-          SurvDiff <- Nf[Ifeed,Year]/(FeedK[Ifeed]*(MultK[Ifeed,Year]))-(Nf[Ifeed,Year]/FeedK[Ifeed])
           # Depl <- Nf[Ifeed,Year]/(FeedK[Ifeed]*(MultK[Ifeed,Year]));
+          Depl <- Nf[Ifeed,Year]/KYr[Ifeed,Year];
+          
+          # Mortality at limit of zero population size
+          # m0 <- -log(SA)
+          # Survival based on depletion and strength of DD
+          alphaK <- exp(log_alphaK)
+          # SurvOutF[Ifeed,Year] <- exp(-m0*(1+betaK*Depl));
+          
+          # Beverton-Holt
+          SurvOutF[Ifeed,Year] <- SA/(1+alphaK*Depl)
+          # print(Depl)
+          # LogitSA <- log(1.0/SA-1.0);
+          # # hazard rate
+          # haz <- exp(LogitSA+exp(log_betaK)*Depl)
+          # # density-dependent survival
+          # SurvOutF[Ifeed,Year] <- exp(-haz)
+          
           LogitSA <- log(1.0/SA-1.0);
           SurvOutB[Ibreed,Year] <- 1.0/(1.0+exp(LogitSA+SBdevYr[Ibreed,Year]*Sigma_SBdev));
-          # SurvOutF[Ifeed,Year] <- 1.0/(1.0+exp(LogitSA+SFdevYr[Ifeed,Year]*Sigma_SFdev));
-          SurvOutF[Ifeed,Year] <- SA*(1-SurvDiff);
           if (StochSopt==0) SAuse <- SurvOutB[Ibreed,Year];
           if (StochSopt==1) SAuse <- SurvOutF[Ifeed,Year];
           LogitSC <- log(1.0/SC-1.0);
           SurvSCB <- 1.0/(1.0+exp(LogitSC+SBdevYr[Ibreed,Year]*Sigma_SBdev));
           # SurvSCF <- 1.0/(1.0+exp(LogitSC+SFdevYr[Ifeed,Year]*Sigma_SFdev));
-          SurvSCF <- 1.0/(1.0+exp(LogitSC+SFdevYr[Ifeed,Year])); # no sigma in this version
+          # Density-dependent calf survival
+          # m0C <- -log(SC)
+          # SurvSCF <- exp(-m0C*(1+alphaK*Depl))
+          SurvSCF <- SC/(1+alphaK*Depl);
+          # SurvSCF <- 1.0/(1.0+exp(LogitSC+SFdevYr[Ifeed,Year])); # no sigma in this version
           if (StochSopt==0) SurvJuv <-  SurvSCB
           if (StochSopt==1) SurvJuv <-  SurvSCF
           
           # Fecundity (Density-dependent)
-          Depl <- Nf[Ifeed,Year]/(FeedK[Ifeed]*(MultK[Ifeed,Year]+KdevYr[Ifeed,Year]));
-          Term1 <- f0*(1.0+ParAV[Ifeed,Year]*(1.0-Depl));
-          Term1 <- 0.0001+(Term1-0.0001)/(1+exp(-30.0*Term1)) 
-          LogitFec <- log(1.0/Term1-1.0);
-          Term1 <- 1.0/(1.0+exp(LogitFec+FBdevYr[Ibreed,Year]*Sigma_FBdev));
+          # Depl <- Nf[Ifeed,Year]/(FeedK[Ifeed]);
+          # Term1 <- f0+(fmax-f0)*1/(1+exp(-KdevYr[Ifeed,Year]))
+          
+          # ft <- -log(fmax)
+          # Term1 <- exp(-ft*(1+betaK*Depl))
+          # Depl <- Nf[Ifeed,Year]/(FeedK[Ifeed]*MultK[Ifeed,Year]);
+          Depl <- Nf[Ifeed,Year]/KYr[Ifeed,Year];
+          # Beverton-Holt
+          # strength of DD for fecundity
+          betaK <- exp(log_betaK)
+          # Term1 <- f0+(fmax-f0)/(1+betaK*Depl)
+          # fmaxT <- calcfmax(rval=rval,Amat=Amat,SA=SurvOutF[Ifeed,Year],SC=SurvJuv)
+          Term1 <- fmax/(1+betaK*Depl)
+          
+          # Fecundity (Density-dependent)
+          # Depl <- Nf[Ifeed,Year]/(FeedK[Ifeed]*MultK[Ifeed,Year]);
+          # Term1 <- f0*(1.0+ParAV[Ifeed,Year]*(1.0-Depl));
+          # Term1 <- 0.0001+(Term1-0.0001)/(1+exp(-30.0*Term1))
+          # LogitFec <- log(1.0/Term1-1.0);
+          # Term1 <- 1.0/(1.0+exp(LogitFec+FBdevYr[Ibreed,Year]*Sigma_FBdev));
           FecOut[Ifeed,Year] <- Term1;
+          
           # Check this
           SurvTot[Ibreed,Ifeed,Year] <- SAuse*sum(NNN[Ibreed,Ifeed,Year,1:Nage])/NNS[Ibreed,Ifeed,Year];
           MortDiff[Ibreed,Ifeed,Year] <- (SAuse-SA)*sum(NNN[Ibreed,Ifeed,Year,1:Nage]);
@@ -394,7 +460,7 @@ f <- function(parms,dat)
       Nb[Ibreed,Year+1] <-  sum(NNN[Ibreed,,Year+1,MatAgeT:Nage])
       
      } # close Ibreed
-    } # close Year   
+    } # close Year
   
   # Save herd numbers for the start of the final year (Nyr+1)
   for (Ibreed in 1:Nbreed)
@@ -566,7 +632,12 @@ f <- function(parms,dat)
   }
   
   # K devs as REs
+  Ksigma = exp(log_Ksigma)
   LogLikeKDevs <- -sum(dnorm(Kdev,mean=0,sd=Ksigma,log=T))
+  
+  # logBK as REs
+  # BKsigma <- exp(logBKsigma)
+  # LogLikeBK <- -sum(dnorm(logBK,mean=4,sd=BKsigma,log=T))
 
   # Weak penalties for stability
   Penal <- 0;
@@ -578,10 +649,13 @@ f <- function(parms,dat)
   Penal <- Penal - sum(dnorm(SBdev,0.0,1.0,log=T));
   Penal <- Penal - sum(dnorm(FBdev,0.0,1.0,log=T));
   # Penal <- Penal - sum(dnorm(SFdev,0.0,1.0,log=T)); # Taking this out because driving directly with environment
-  Penal <- Penal - sum(dnorm(envPenal,0.0,1.0,log=T));
+  # Penal <- Penal - sum(dnorm(envPenal,0.0,1.0,log=T));
   TotalK <- sum(BreedK)
   if (UseKPrior > 0)  Penal <- Penal - UseKPrior*log(1.0/(1.0+exp(Prior_int+Prior_slope*TotalK)))
+  
+  # FINAL COMBINED LIKELIHOOD (objective)
   datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+LogLikeKDevs;
+  # datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b);
   neglogL <-  Penal + datalike;
   #print(neglogL)
   
@@ -605,7 +679,8 @@ f <- function(parms,dat)
   ADREPORT(LogNf);
   # ADREPORT(SBdevYr);
   # ADREPORT(SFdevYr);
-  ADREPORT(KdevYr);
+  # ADREPORT(KdevYr);
+  ADREPORT(KYr);
   ADREPORT(SurvOutB);
   ADREPORT(SurvOutF);
   
@@ -626,7 +701,8 @@ f <- function(parms,dat)
   REPORT(LogLike1);
   REPORT(LogLike2a);
   REPORT(LogLike2b);
-  REPORT(LogLikeKDevs);
+  # REPORT(LogLikeKDevs);
+  REPORT(KYr);
   REPORT(BreedK);
   REPORT(FeedK);
   REPORT(Mix);

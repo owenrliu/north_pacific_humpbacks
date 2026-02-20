@@ -124,7 +124,7 @@ f <- function(parms,dat)
     }
   
   # calculate index
-  env_index <- omega_sst*sst+omega_chl*chl
+  env_index <- omega_sst*sst+omega_mld*mld
   # Difference between SFdevs and environmental index
   IenvStart=Nyr-(Yr2-YrSDevs)
   envPenal <- c(SFdevYr[,IenvStart:Nyr]-env_index)
