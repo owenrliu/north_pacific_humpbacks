@@ -9,7 +9,7 @@ library(here)
 theme_set(theme_classic())
 
 # Bayesian estimates of the model, with survival as a random effect
-bayes <- read_rds(here('Diags','B2F1 FAenvDirect','B2F1BC_Bayes.rds'))
+bayes <- read_rds(here('Diags','final','rs Bayes test','B2F1BC_Bayes.rds'))
 launch_shinystan(bayes)
 
 # Parameter estimates as a df

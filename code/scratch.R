@@ -3,13 +3,13 @@ library(here)
 
 #######################
 # Run all this to seed the DoRun function
-Code="B2F1";SensCase="BC";StochSopt=1;StrayBase=0;
+Code="B2F1";SensCase="BC";StrayBase=0;
 IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
-SF=c(1,1,1,1,1,1); WithMirror=0;
+SF=c(0,1,1,1,1,1); WithMirror=0;
 UseKPrior=1; Kmax=60000;
 YrSDevs=2000;
-rvars=NULL;
-envOpt="direct";splineK=7; EF=c(0,1,1,1,1,1);envlag=0;
+rvars="Kdev";
+envOpt="env-K";envVars=c("sst","mld");splineK=7;envlag=0;
 SigmaDevS=6;SigmaDevF=0.01;Yr1=1970;Yr2=2023;
 AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
 ByCatchFile="BycatchActual_2024_04_24.csv";
@@ -25,7 +25,7 @@ subdir = "B2F1 FAenvDirect"
 # =================================================================================================================================
 
 # A fitted model obj
-model <- read_rds(here('Diags','B2F1 FAvarK','B2F1BC_TMB.rds'))
+model <- read_rds(here('Diags','final','env-K test','B2F1BC_TMB.rds'))
 fit <- nlminb(model$par, model$fn, model$gr,verbose=T)
 
 # Check gradients
@@ -77,22 +77,21 @@ test <- f(parNew,dat)
 
 # Fix some parameter and re-fit
 mapNew <- model$env$map
-mapNew$logK <- factor(rep(NA,length(parameters$logK)))
-parmsNew <- parameters
+mapNew$logK <- factor(rep(NA,length(obj$input$parameters$logK)))
+parmsNew <- obj$input$parameters
 parmsNew$logK <- c(8.449,10.81,9.23,9.99,8.49)
-modelNew <- MakeADFun(cmb(f,dat), parmsNew, map=mapNew,DLL="Hump",silent=T)
+modelNew <- MakeADFun(cmb(f,obj$input), parmsNew, map=mapNew,DLL="Hump",silent=F)
 fitFix <- nlminb(modelNew$par, modelNew$fn, modelNew$gr,verbose=T)
 
 # =================================================================================================================================
 # Load Results/Outputs
 # =================================================================================================================================
 
-obj <- read_rds(here('Diags','B2F2 FAbase','B2F2BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAenvIndex_rS','B2F1BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FArS','B2F1BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAenvDirect','B2F1BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAvarK','B2F1BC.rds'))
-obj <- read_rds(here('Diags','B2F1 FAdd','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','rS no RUS_WAL','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','env-survival no RUS_WAL','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','env-K test','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','ddOnly','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','env-survival generic env test','B2F1BC.rds'))
 ###
 
 # Reports and outputs

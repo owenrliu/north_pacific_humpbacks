@@ -547,7 +547,7 @@ MakeDataScenario <- function(Code, SensCase, StochSopt, StrayBase, DataFileName,
   nFfdevs <- sum(FFdevEst) * length(YrSDevs:Yr2) # fecundity, feeding grounds
 
   # Carrying capacity deviates
-  nKdevs <- length(YrSDevs:Yr2)*sum(SF)
+  nKdevs <- length(YrSDevs:Yr2)*sum(EF)
 
   if (nBfdevs == 0) nBfdevs <- 1
   if (nFfdevs == 0) nFfdevs <- 1
@@ -758,6 +758,9 @@ MakeDataScenario <- function(Code, SensCase, StochSopt, StrayBase, DataFileName,
   }
   if(envOpt=="varK"){
     mapUse$SFdev = rep(factor(NA), length(SFdev))
+    # for testing...
+    # mapUse$log_Ksigma = factor(NA)
+    # mapUse$log_betaK = factor(NA)
   }
   if(envOpt=="ddOnly"){
     mapUse$omega_sst <- rep(factor(NA),length(omega_sst))

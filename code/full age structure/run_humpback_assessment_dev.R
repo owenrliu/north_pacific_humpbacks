@@ -4,9 +4,9 @@ library(here)
 # ========================================================================================
 
 # all the functions we need
-source(here('code',"data_reading_functions_dev.R"))
-source(here('code',"output_writing_functions.R"))
-source(here('code',"plotting_functions.R"))
+source(here('code','full age structure',"data_reading_functions_dev.R"))
+source(here('code','full age structure',"output_writing_functions.R"))
+source(here('code','full age structure',"plotting_functions.R"))
 
 # Fitting Function
 DoRun <- function(Code,SensCase,StochSopt=1,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
@@ -350,7 +350,7 @@ Bootstrap <- function(Code,dat,parameters,map,rept,Yr1,Yr2,BreedNames,FeedNames,
 ### TESTING ZONE
 # Survival as random effect
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 rS/no RUS_WAL",
+            SensCase="BC",subdir="B2F1 rS/test",
             envOpt="randomS",
             rvars=c("SFdev"),
             SF=c(0,1,1,1,1,1), WithMirror=0,
@@ -376,9 +376,11 @@ xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             DoBayes = F,Init=NULL)
 # environmental index with variable K
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FAvarK",
+            SensCase="BC",subdir="B2F1 varK",
+            rvars=c("Kdev"),
             envOpt="varK", UseKPrior = 1, Kmax=60000,
-            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            SF=c(0,1,1,1,0,0),
+            EF=c(0,1,1,1,0,0),WithMirror = 0,AllPlots=T,DoBoot=F,
             DoBayes = F,Init=NULL)
 ###################################################################################################
 # Bayesian Versions
