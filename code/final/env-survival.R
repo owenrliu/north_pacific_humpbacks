@@ -88,6 +88,7 @@ f <- function(parms,dat)
   # ========================================================================================================================
   SFdevYr <- matrix(0,nrow=Nfeed,ncol=Nyr)
   YrMatch <- Nyr-(Yr2-YrSDevs)
+  NyrEnv <- length(YrSDevs:Yr2)
   whichFeed <- which(SF==1)
   env_index <- matrix(0,nrow=length(whichFeed),ncol=length(YrSDevs:Yr2))
   for(i in 1:length(envVars)){
@@ -96,7 +97,26 @@ f <- function(parms,dat)
   }
   SFdevYr[whichFeed,YrMatch:Nyr] <- env_index+epsEnv
   
+  #polynomials
+  # for(i in 1:length(whichFeed)){
+  #   for(j in 1:length(YrSDevs:Yr2)){
+  #     env_index[i,j] <- Xpolyl[j,,i]%*%betaPoly[i,]
+  #   }
+  # }
+  # SFdevYr[whichFeed,YrMatch:Nyr] <- env_index+epsEnv
+  
   #splines
+  # for(i in 1:length(whichFeed)){
+  #   indexTemp <- matrix(0,nrow=NyrEnv)
+  #   for(j in 1:length(envVars)){
+  #     eei <- Xarr[,,,j][,,i] %*% beta_splines[i,,j]
+  #     indexTemp <- indexTemp+eei
+  #   }
+  #   env_index[i,] <- indexTemp
+  # }
+  # SFdevYr[whichFeed,YrMatch:Nyr] <- env_index+epsEnv
+  # SFdevYr[whichFeed,YrMatch:Nyr] <- env_index
+  
   # mld_effect <- matrix(0,nrow=Nfeed,ncol=ncol(mld))
   # sst_effect <- matrix(0,nrow=Nfeed,ncol=ncol(sst))
   # for(i in 1:Nfeed){
@@ -525,13 +545,36 @@ f <- function(parms,dat)
     }
     Jcnt <- Jcnt + 1;
   }
+  # Environmental splines
+  # sigma_spline <- exp(logsigma_splines)
+  # lambda_spline <- exp(loglambda_splines)
+  # llenv <- 0 # likelihood
+  # penv <- 0 # penalty
+  # 
+  # for(i in 1:sum(SF)){
+  #   for(j in 1:length(envVars)){
+  #     llenv <- llenv - sum(dnorm(beta_splines[i,,j],mean=0,sd=sigma_spline[i,j],log=T))
+  #     penv <- penv + 0.5*lambda_spline[i,j]*sum(beta_splines[i,,j]*(Sarr[,,i,j]%*%beta_splines[i,,j]))
+  #   }
+  # }
+  # for(i in 1:Nfeed){
+  #   mldS <- Smld[,,i]
+  #   sstS <- Ssst[,,i]
+  #   mld_penal <- 0.5*lambda_spline_mld[i]*sum(beta_splines_mld[i,]*(mldS %*% beta_splines_mld[i,]))
+  #   sst_penal <- 0.5*lambda_spline_sst[i]*sum(beta_splines_sst[i,]*(sstS %*% beta_splines_sst[i,]))
+  #   penv[i] <- mld_penal+sst_penal
+  # }
   
   # Environmental index of survival likelihood
   LogLikeS <- 0
   if(length(whichFeed)>0){
     sigmaEnv <- exp(log_sigmaEnv)
-    LogLikeS <- LogLikeS -sum(dnorm(epsEnv,mean=0,sd=sigmaEnv,log=T)) 
+    LogLikeS <- LogLikeS -sum(dnorm(epsEnv,mean=0,sd=sigmaEnv,log=T))
   }
+  # if(length(whichFeed)>0){
+  #   sigmaP <- exp(log_sigmaPoly)
+  #   LogLikeS <- LogLikeS -sum(dnorm(env_index,mean=0,sd=sigmaP,log=T)) 
+  # }
   
   # =================================================================================================================================
   # Penalties/Priors
@@ -551,11 +594,16 @@ f <- function(parms,dat)
   Penal <- Penal + logBK_sumSQ
   
   # environment
+  # penv <- -sum(dnorm(betaPoly,0.0,1.0,log=T))
+  # penv <- penv - sum(dnorm(lambda_spline,0.0,1.0,log=T))
+  # penv <- penv - sum(dnorm(sigma_spline,0.0,1.0,log=T))
+  # Penal <- Penal+penv
   envPenal <- -sum(dnorm(envParams,0.0,1.0,log=T))
   Penal <- Penal+envPenal
   
   # final likelihood
   datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b) + LogLikeS;
+  # datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+llenv;
   neglogL <-  Penal + datalike;
   #print(neglogL)
   
@@ -579,6 +627,7 @@ f <- function(parms,dat)
   ADREPORT(LogNf);
   ADREPORT(SFdevYr);
   ADREPORT(SurvOutF);
+  ADREPORT(env_index);
   
   REPORT(Nb);
   REPORT(Nf);
@@ -598,6 +647,10 @@ f <- function(parms,dat)
   REPORT(LogLike2a);
   REPORT(LogLike2b);
   REPORT(LogLikeS);
+  
+  # REPORT(penv);
+  # REPORT(llenv);
+  
   REPORT(BreedK);
   REPORT(FeedK);
   REPORT(Mix);

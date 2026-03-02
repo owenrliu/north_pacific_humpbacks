@@ -21,7 +21,7 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
                   FullDiag=T,
                   # PlotsDir= paste0(here('plots'),"/"),
                   WghtTotal=1,Idirichlet=1,MaxN=100,seed=19101,
-                  DoBayes=F,Init=NULL,subdir="")
+                  DoBayes=F,Init=NULL,subdir="",return_model_obj=F)
 {
   
   cat("Doing ",paste0(Code,"-",SensCase)," using data file ",DataFileName,"\n")
@@ -81,12 +81,9 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
   sdr <- summary(adr)
   sdrf <- summary(adr, "fixed", p.value = TRUE)
   
-  
   cat("final nll:",rept$neglogL,"\nTotal data likelihood:",rept$datalike,"\nTotal penalty:",rept$Penal,
       "\nSurvey likelihood:",rept$LogLike1,"\nMixing BtF likelihood:",rept$LogLike2a,"\nMixing FtB likelihood",rept$LogLike2b,"\n")
   #print(exp(LogNT))
-  
- 
   
   # =================================================================================================================================
   # Write and Plot
@@ -94,8 +91,9 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
   
   WriteOut(Code,Abbrev=SensCase,rept=rept,sdr=sdr,sdrf=sdrf,data=dat,subdir = subdir)
   
+  obj <- list(Code=Code,SensCase=SensCase,input=dat,report=rept,sdreport=sdr,sdfixed=sdrf,converge=fit$convergence)
+  
   if(AllPlots){
-    obj <- list(Code=Code,SensCase=SensCase,input=dat,report=rept,sdreport=sdr,sdfixed=sdrf)
     fildir <- here("plots",subdir)
     if(!dir.exists(fildir)) dir.create(fildir,recursive = T)
     
@@ -161,8 +159,12 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
     # save Bayes out
     readr::write_rds(mcmcout,paste0(fildir,"/",Code,SensCase,"_Bayes.rds"))
   }
-  
-  return(best)
+
+  if(return_model_obj){
+    return(obj)
+  }else {
+    return(best)
+  }
 }
 
 # ==========================================================================================
@@ -179,7 +181,7 @@ xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             SensCase="BC",subdir="final/env-survival test",
             envOpt="env-survival", envVars=c("sst","mld"),
-            rvars=c("epsEnv"),
+            rvars=c("epsEnv"),splineK=4,
             SF=c(0,1,1,1,1,1), WithMirror=0)
 # density-dependent survival only, but with no environmental drivers and no variation in K
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
@@ -211,3 +213,96 @@ xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             SensCase="BC",subdir="B2F1 FAenvDirect",envOpt="direct",
             SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
             DoBayes = T,Init=NULL)
+
+###################################################################################################
+# Optimize Environmental Covariates
+###################################################################################################
+# need to vary YrSDevs, SF, and included covariates
+# make a model table for the things we want to test
+ev <- c("sst","chl","mld","no3","nppv")
+env_var_combs <- unlist(
+  lapply(seq_along(ev), function(k) combn(ev, k, simplify = FALSE)),
+  recursive = FALSE
+)
+# for now, try looping these combinations without varying other params
+lldata <- list()
+llS <- list()
+penals <- list()
+conv <- list()
+safe_run <- possibly(DoRun,otherwise="Error.")
+for(i in 1:length(env_var_combs)){
+  xx <- safe_run(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+              SensCase="BC",subdir="final/temp",
+              envOpt="env-survival",
+              rvars=c("epsEnv"),envVars = env_var_combs[[i]],
+              SF=c(0,1,1,1,1,1), WithMirror=0,
+              AllPlots=F,return_model_obj = T)
+  if(is.list(xx)){
+    lldata[[i]] <- xx$report$datalike
+    conv[[i]] <- xx$converge
+    llS[[i]] <- xx$report$LogLikeS
+    penals[[i]] <- xx$report$Penal
+  } else{
+    lldata[[i]] <- NA
+    conv[[i]] <- NA
+    llS[[i]] <- NA
+    penals[[i]] <- NA
+  }
+}
+mdl_tbl <- tibble(vars=env_var_combs,lldata=unlist(lldata),converged=unlist(conv),llS=unlist(llS),penalty=unlist(penals))
+write_rds(mdl_tbl,here('Diags','final','env-survival variable testing.rds'))
+
+p_dll <- mdl_tbl |> 
+  mutate(mn=row_number()) |> 
+  mutate(converge= ifelse(converged==0,"Yes","No")) |> 
+  mutate(nlldata=lldata*-1) |> 
+  ggplot(aes(mn,nlldata,color=factor(converge)))+
+  geom_point()+
+  labs(x="Model Number",y="Data Likelihood",color="Converged?",
+       title="Summed Log Likelihood")
+p_sll <- mdl_tbl |> 
+  mutate(mn=row_number()) |> 
+  mutate(converge= ifelse(converged==0,"Yes","No")) |> 
+  mutate(nllS=llS*-1) |> 
+  ggplot(aes(mn,nllS,color=factor(converge)))+
+  geom_point()+
+  labs(x="Model Number",y="Survival Likelihood",color="Converged?",
+       title="Summed Survival Likelihood")
+p_pen <- mdl_tbl |> 
+  mutate(mn=row_number()) |> 
+  mutate(converge= ifelse(converged==0,"Yes","No")) |> 
+  mutate(penalty=penalty*-1) |> 
+  ggplot(aes(mn,penalty,color=factor(converge)))+
+  geom_point()+
+  labs(x="Model Number",y="Total Data Penalty",color="Converged?",
+       title="Summed Data Penalty")
+# pseudo AIC- how does likelihood relate to total number of environmental parameters?
+# logic- for a given set of X environmental variables, there are X*5 parameters,
+# because there are 5 feeding grounds with estimated parameters for each
+p_AIC <- mdl_tbl |> 
+  mutate(mn=row_number(),
+         nev=map_dbl(vars,length)*5) |> 
+  mutate(converge= ifelse(converged==0,"Yes","No")) |> 
+  mutate(nlldata=lldata*-1) |> 
+  mutate(pAIC=2*nev-2*nlldata) |> 
+  ggplot(aes(mn,pAIC,color=factor(converge)))+
+  geom_point()+
+  labs(x="Model Number",y="pseudo AIC",color="Converged?",
+       title="2*(Nparams)-2*Summed LL")
+
+allp <- cowplot::plot_grid(p_dll,p_sll,p_pen,p_AIC,nrow=2)
+ggsave(here('plots','final','env-survival variable testing.png'),allp,w=10,h=6)
+
+# preferred model
+DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+  SensCase="BC",subdir="final/env-survival select",
+  envOpt="env-survival",
+  rvars=c("epsEnv"),envVars = env_var_combs[[30]],
+  SF=c(0,1,1,1,1,1), WithMirror=0,
+  AllPlots=T,return_model_obj = F)
+DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+      SensCase="BC",subdir="final/env-K select",
+      rvars=c("Kdev"),
+      envOpt="env-K",envVars=env_var_combs[[30]], UseKPrior = 1, Kmax=60000,
+      SF=c(0,1,1,1,0,0),WithMirror = 0,AllPlots=T,DoBoot=F,
+      DoBayes = F,Init=NULL)

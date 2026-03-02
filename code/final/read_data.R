@@ -553,47 +553,74 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   envParams <- simplify2array(envParams)
 
   # Additional random error
-  nepsEnv <- sum(SF)*length(YrSDevs:Yr2) # number of params for extra environmental variation
+  NyrEnv <- length(YrSDevs:Yr2)
+  nepsEnv <- sum(SF)*NyrEnv # number of params for extra environmental variation
   epsEnv <- rep(0,nepsEnv)
   sigmaEnv <- 1
   log_sigmaEnv <- log(sigmaEnv)
   
+  # polynomial version
+  # Function to create polynomial design matrix for multiple covariates
+  # make_poly_design <- function(data, poly_specs) {
+  #   # poly_specs is a named list: list(var1 = degree1, var2 = degree2, ...)
+  #   # describing the polynomial degree for each variable
+  #   # Example: list(temp = 2, depth = 3) means temp^0, temp^1, temp^2, depth^0, ..., depth^3
+  #   X_list <- list()
+  #   for (var_name in names(poly_specs)) {
+  #     degree <- poly_specs[[var_name]]
+  #     x <- data[[var_name]]
+  #     # Create polynomial terms for this variable
+  #     for (d in 0:degree) {
+  #       col_name <- if (d == 0) "intercept" else paste0(var_name, "_", d)
+  #       X_list[[col_name]] <- x^d
+  #     }
+  #   }
+  #   # Combine into matrix (removing duplicate intercepts)
+  #   X <- do.call(cbind, X_list)
+  #   # Keep only one intercept column
+  #   intercept_cols <- which(colnames(X) == "intercept")
+  #   if (length(intercept_cols) > 1) {
+  #     X <- X[, -intercept_cols[-1], drop = FALSE]
+  #   }
+  #   return(X)
+  # }
+  # Xpolyl <- map(1:length(FeedNames),\(x){
+  #   envl <- map(envData,\(x) x[i,])
+  #   specs <- rep(2,length(envVars)) # degree of polynomial for each variable
+  #   names(specs) <- envVars
+  #   make_poly_design(envl,specs)
+  # }) |> simplify2array()
+  # Xpolyl <- Xpolyl[,,which(SF==1)]
+  # ncoef <- dim(Xpolyl)[2]
+  # betaPoly <- matrix(0,nrow=sum(SF),ncol=ncoef) # rows are feeding grounds, columns are components of the polynomial
+  # log_sigmaPoly <- 0
+  
   ## Splines version (thin-plate regression spline)
   # ncoef <- splineK-1
-  # Xsst <- array(0,dim=c(ncol(sst),ncoef,length(FeedNames)))
-  # Xmld <- array(0,dim=c(ncol(mld),ncoef,length(FeedNames)))
-  # Ssst <- array(0,dim=c(ncoef,ncoef,length(FeedNames)))
-  # Smld <- array(0,dim=c(ncoef,ncoef,length(FeedNames)))
-  # 
-  # for(i in 1:length(FeedNames)){
-  #   sstd <- data.frame(env=sst[i,])
-  #   spline_setup_sst <- smoothCon(
-  #     s(env, k=splineK,bs='cr'), # 8 knots
-  #     data = sstd,
-  #     absorb.cons = TRUE
-  #   )[[1]]
-  #   
-  #   mldd <- data.frame(env=mld[i,])
-  #   spline_setup_mld <- smoothCon(
-  #     s(env, k=splineK,bs='cr'), # 8 knots
-  #     data = sstd,
-  #     absorb.cons = TRUE
-  #   )[[1]]
-  #   Xsst[,,i] <- spline_setup_sst$X
-  #   Xmld[,,i] <- spline_setup_mld$X
-  #   Ssst[,,i] <- spline_setup_sst$S[[1]]
-  #   Smld[,,i] <- spline_setup_mld$S[[1]]
+  # X_list<- list()
+  # S_list <- list()
+  # for(i in 1:length(envVars)){
+  #   Xtemp <- array(0,dim=c(NyrEnv,ncoef,sum(SF)))
+  #   Stemp <- array(0,dim=c(ncoef,ncoef,sum(SF)))
+  #   for(j in 1:sum(SF)){
+  #     x <- data.frame(env=envData[[i]][j,])
+  #     spline_setup_temp <- smoothCon(
+  #       s(env, k=splineK,bs='cr'), # 8 knots
+  #       data = x,
+  #       absorb.cons = TRUE)[[1]]
+  #     Xtemp[,,j] <- spline_setup_temp$X
+  #     Stemp[,,j] <- spline_setup_temp$S[[1]]
+  #   }
+  #   X_list[[i]] <- Xtemp
+  #   S_list[[i]] <- Stemp
   # }
-  # 
-  # # Coefficients for splines (k=3 means 2 coefficients for each spline)
-  # beta_splines_sst <- matrix(0,nrow=Nfeed,ncol=ncoef)
-  # beta_splines_mld <- matrix(0,nrow=Nfeed,ncol=ncoef)
-  # 
-  # # SD of splines
-  # sigma_spline_sst <- rep(1,Nfeed)
-  # lambda_spline_sst <- rep(1,Nfeed)
-  # sigma_spline_mld <- rep(1,Nfeed)
-  # lambda_spline_mld <- rep(1,Nfeed)
+  # Xarr <- simplify2array(X_list)
+  # Sarr <- simplify2array(S_list)
+  # # # Coefficients for splines (k=3 means 2 coefficients for each spline)
+  # beta_splines <- array(0,dim=c(sum(SF),ncoef,length(envVars)))
+  # # # SD of splines
+  # sigma_splines <- matrix(1,nrow=sum(SF),ncol=length(envVars))
+  # lambda_splines <- matrix(1,nrow=sum(SF),ncol=length(envVars))
   
   # ==================================Density Dependence====================================================
   # Strength of density-dependence in survival and fecundity
@@ -626,8 +653,16 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   # If driving survival directly with environment, use omegas
   if (envOpt == "env-survival"){
     parameters$epsEnv = epsEnv # normal random error in environmental index of survival
-    parameters$log_sigmaEnv = log_sigmaEnv # SD of epsEnv 
+    parameters$log_sigmaEnv = log_sigmaEnv # SD of epsEnv
+    # if linear:
     parameters$envParams <- envParams
+    # if polynomial:
+    # parameters$betaPoly <- betaPoly
+    # parameters$log_sigmaPoly <- log_sigmaPoly
+    # if splines:
+    # parameters$beta_splines = beta_splines # coefficients for env splines
+    # parameters$logsigma_splines = log(sigma_splines) # spline SD
+    # parameters$loglambda_splines = log(lambda_splines) # spline SD
   }
   # If density-dependent survival, but no K or S Devs
   if (envOpt == "ddOnly") {
@@ -648,16 +683,6 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
     parameters$envParams <- envParams
     # parameters$logBKsigma = logBKsigma # sd of initial depletion RE
   }
-  # if (envOpt == "envSpline") {
-  #   parameters$beta_splines_sst = beta_splines_sst # coefficients for sst splines
-  #   parameters$beta_splines_mld = beta_splines_mld # coefficients for mld splines
-  #   parameters$logsigma_spline_sst = log(sigma_spline_sst) # spline SD
-  #   parameters$logsigma_spline_mld = log(sigma_spline_mld) # spline SD
-  #   parameters$loglambda_spline_sst = log(lambda_spline_sst) # spline SD
-  #   parameters$loglambda_spline_mld = log(lambda_spline_mld) # spline SD
-  #   # parameters$omega_sst = omega_sst # coefficients on the sst timeseries affecting survival
-  #   # parameters$omega_mld = omega_mld # coefficents on the mld timeseries affecting survival
-  # }
 
   # ==================================Fixing Parameters====================================================
   # factor(NA) means DON'T ESTIMATE THIS, USE FIXED PARAM
@@ -706,10 +731,9 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
     NextraCV1 = NextraCV1,
     CatchB = CatchB,
     CatchF = CatchF,
-    # Xsst = Xsst,
-    # Xmld = Xmld,
-    # Ssst = Ssst,
-    # Smld = Smld,
+    # Xpolyl = Xpolyl, # polynomial design matrix for env. vars
+    # Xarr = Xarr, # design matrices, environmental splines; NyrxNcoefxFeedxvariable
+    # Sarr = Sarr, # spline penalty matrices
     SF = SF,
     MixI = MixI,
     NsurveyData = NsurveyData,

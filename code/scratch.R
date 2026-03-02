@@ -8,8 +8,9 @@ IAmat=8;SA=0.96;SC=0.8;TimeLag=0;DensDepOpt=0;
 SF=c(0,1,1,1,1,1); WithMirror=0;
 UseKPrior=1; Kmax=60000;
 YrSDevs=2000;
-rvars="Kdev";
-envOpt="env-K";envVars=c("sst","mld");splineK=7;envlag=0;
+rvars="epsEnv";
+envOpt="env-survival";envVars=c("sst","mld","chl");
+splineK=7;envlag=0;
 SigmaDevS=6;SigmaDevF=0.01;Yr1=1970;Yr2=2023;
 AddCV=T;MixWeights=c(1,1);CatchSer="B";AllPlots=F;DoBoot=F;
 ByCatchFile="BycatchActual_2024_04_24.csv";
@@ -25,7 +26,7 @@ subdir = "B2F1 FAenvDirect"
 # =================================================================================================================================
 
 # A fitted model obj
-model <- read_rds(here('Diags','final','env-K test','B2F1BC_TMB.rds'))
+model <- read_rds(here('Diags','final','rS test','B2F1BC_TMB.rds'))
 fit <- nlminb(model$par, model$fn, model$gr,verbose=T)
 
 # Check gradients
@@ -87,11 +88,13 @@ fitFix <- nlminb(modelNew$par, modelNew$fn, modelNew$gr,verbose=T)
 # Load Results/Outputs
 # =================================================================================================================================
 
-obj <- read_rds(here('Diags','final','rS no RUS_WAL','B2F1BC.rds'))
-obj <- read_rds(here('Diags','final','env-survival no RUS_WAL','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','rS test','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','env-survival test','B2F1BC.rds'))
 obj <- read_rds(here('Diags','final','env-K test','B2F1BC.rds'))
-obj <- read_rds(here('Diags','final','ddOnly','B2F1BC.rds'))
-obj <- read_rds(here('Diags','final','env-survival generic env test','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','ddOnly test','B2F1BC.rds'))
+obj <- read_rds(here('Diags','final','env-survival spline test','B2F1BC.rds'))
+
+obj <- read_rds(here('Diags','final','env-K select','B2F1BC.rds'))
 ###
 
 # Reports and outputs
@@ -192,7 +195,9 @@ fooh <- function(base_s,beta,depl){
   # Sy <- base_s*exp(-beta*depl)
   Sy
 }
-crossing(depl=seq(0,1.2,by=0.05),base_s=0.96,beta=seq(0,6,by=1)) |> 
+crossing(depl=seq(0,1.2,by=0.05),base_s=0.96,
+         beta=0.5461946) |> 
+         # beta=seq(0,6,by=1)) |> 
   mutate(surv=fooh(base_s,beta,depl)) |> 
   ggplot(aes(depl,surv,color=ordered(beta)))+
   geom_line()+

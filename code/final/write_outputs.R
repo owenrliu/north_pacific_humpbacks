@@ -2,7 +2,7 @@
 require(lubridate)
 require(here)
 
-WriteOut <- function(Code,Abbrev,rept,sdr,sdrf,data,subdir=""){
+WriteOut <- function(Code,Abbrev,rept,sdr,sdrf,data,subdir="",...){
   # create file directory if it does not exist yet
   fildir <- here("Diags",subdir)
   if(!dir.exists(fildir)) dir.create(fildir)

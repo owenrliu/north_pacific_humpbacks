@@ -174,7 +174,8 @@ plot_survival <- function(obj,opt="F"){
     mutate(zone=rep(zn,numyr)) |> 
     mutate(year=as.integer(year)) |> 
     set_names(c("param","survival","sd.survival","year","zone")) |> 
-    mutate(upper=survival+1.96*sd.survival,lower=survival-1.96*sd.survival) |> 
+    mutate(upper=survival+1.96*sd.survival,lower=survival-1.96*sd.survival) |>
+    # mutate(upper=survival+sd.survival,lower=survival-sd.survival) |> 
     mutate(upper=pmin(upper,1),lower=pmax(0,lower))
   
   p <- sdat |> 
@@ -218,7 +219,8 @@ plot_survival_curve <- function(obj,opt="F"){
     set_names(c("param","survival","sd.survival","year","zone")) |> 
     mutate(upper=survival+1.96*sd.survival,lower=survival-1.96*sd.survival) |> 
     mutate(upper=pmin(upper,1),lower=pmax(0,lower)) |>
-    left_join(envdf,by=join_by(year,zone))
+    left_join(envdf,by=join_by(year,zone)) |> 
+    filter(year>=ydevs)
   nzone=length(unique(sdat$zone))
   envnames <- pluck(obj,"input","envVars")
   pl <- map(envnames,\(x){
@@ -265,7 +267,7 @@ plot_Sdevs_curve <- function(obj){
     left_join(envdf,by=join_by(year,zone)) |> 
     filter(year>=ydevs)
   nzone=length(unique(sdat$zone))
-  pl <- map(envnames,\(x){
+  pl <- map(names(envData),\(x){
     sdat |> 
       ggplot(aes(.data[[x]],sdev))+
       geom_point(aes(color=zone))+
@@ -275,6 +277,58 @@ plot_Sdevs_curve <- function(obj){
       scale_color_manual(values=viridis_pal()(nzone))
   })
   cowplot::plot_grid(plotlist = pl,ncol=2)
+}
+
+# Plot the actual environmental index, plus the extra deviates epsEnv
+plot_envIndex <- function(obj){
+  
+  sdat <- pluck(obj,"sdreport") |> 
+    as_tibble(rownames="param") |> 
+    filter(param=="env_index")
+  epsEnvdat <- pluck(obj,"sdreport") |> 
+    as_tibble(rownames="param") |> 
+    filter(param=="epsEnv")
+  
+  yrs <- pluck(obj,"input","Years")
+  yrs <- yrs[-length(yrs)] #remove the last year because there's no survival calculated
+  numyr <- length(yrs)
+  ydevs <- pluck(obj,"input","YrSDevs")
+  
+  # names
+  zn <- pluck(obj,'input','FeedNames') |> as.character()
+  SF <- obj$input$SF
+  zn <- zn[which(SF==1)]
+  numz <- length(zn)
+  
+  sdat <- sdat |> 
+    mutate(year=rep(ydevs:max(yrs),each=numz)) |> 
+    mutate(zone=rep(zn,length(ydevs:max(yrs)))) |> 
+    mutate(year=as.integer(year)) |> 
+    set_names(c("param","envIndex","sd.survival","year","zone")) |> 
+    mutate(upper=envIndex+1.96*sd.survival,lower=envIndex-1.96*sd.survival)
+  
+  epsEnvdat <- epsEnvdat |> 
+    mutate(year=rep(ydevs:max(yrs),each=numz)) |> 
+    mutate(zone=rep(zn,length(ydevs:max(yrs)))) |> 
+    mutate(year=as.integer(year)) |> 
+    set_names(c("param","epsEnv","sd.eps","year","zone")) |> 
+    mutate(upper=epsEnv+1.96*sd.eps,lower=epsEnv-1.96*sd.eps)
+  
+  p <- sdat |> 
+    ggplot(aes(year,envIndex,ymin=lower,ymax=upper))+
+    geom_ribbon(fill="lightblue")+
+    geom_line()+
+    labs(x="Year",y="Index of Survival")+
+    geom_hline(yintercept=0,linetype=2)+
+    facet_wrap(~zone)
+  p2 <- epsEnvdat |> 
+    ggplot(aes(year,epsEnv,ymin=lower,ymax=upper))+
+    geom_ribbon(fill="lightblue")+
+    geom_line()+
+    labs(x="Year",y="Extra Survival Deviation (epsEnv)")+
+    geom_hline(yintercept=0,linetype=2)+
+    facet_wrap(~zone)
+  cowplot::plot_grid(p,p2,nrow=2)
 }
 
 # Plot coefficient estimates for environmental covariates
