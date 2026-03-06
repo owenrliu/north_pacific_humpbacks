@@ -7,6 +7,7 @@ library(here)
 source(here('code','final','read_data.R'))
 source(here('code','final',"write_outputs.R"))
 source(here('code','final',"plotting_functions.R"))
+source(here('code','final',"plotting_functions_Bayes.R"))
 
 # Fitting Function
 DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeLag=0,DensDepOpt=0,
@@ -147,7 +148,7 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
     # Now consider mcmc sampling (stan)
     print("trying Bayes")
     options(mc.cores=4)
-    mcmcout <- tmbstan(obj=model,iter=1000,refresh=100,warmup = 10, chains=4,cores=1,
+    mcmcout <- tmbstan(obj=model,iter=10000,refresh=100,warmup = 2000, chains=4,cores=1,
                        init = list(best,best,best,best),
                        seed = 1916, thin = 1)
     ## Key information from run. Including the two recommended
@@ -208,17 +209,41 @@ xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             rvars=c("SFdev"),
             SF=c(0,1,1,1,1,1), WithMirror=0,
             DoBayes = T)
-# environment direct (with Bayesian sampling)
+# Density dependence only
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
-            SensCase="BC",subdir="B2F1 FAenvDirect",envOpt="direct",
-            SF=c(1,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            SensCase="BC",subdir="final/ddOnly Bayes",
+            envOpt="ddOnly",
+            SF=c(1,1,1,1,1,1), WithMirror=0,
+            DoBayes = T)
+# environment survival (with Bayesian sampling)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="final/env-survival Bayes",
+            envOpt="env-survival",
+            rvars=c("epsEnv"),
+            envVars=c("chl","mld","no3","nppv"),
+            SF=c(0,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
+            DoBayes = F,Init=NULL)
+# environment K (with Bayesian sampling)
+xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
+            SensCase="BC",subdir="final/env-K Bayes",
+            rvars=c("Kdev"),
+            envOpt="env-K",
+            envVars=c("chl","mld","no3","nppv"),
+            UseKPrior = 1, Kmax=60000,
+            SF=c(0,1,1,1,0,0),WithMirror = 0,AllPlots=T,DoBoot=F,
             DoBayes = T,Init=NULL)
+
+###################################################################################################
+# Post-hoc Bayes plotting
+###################################################################################################
+# Plot the outputs from the Bayesian models
+sd <- "env-survival Bayes"
+make_all_Bayes_plots(sd)
 
 ###################################################################################################
 # Optimize Environmental Covariates
 ###################################################################################################
-# need to vary YrSDevs, SF, and included covariates
-# make a model table for the things we want to test
+# Try env-survival model with all possible combinations of environmental variables
 ev <- c("sst","chl","mld","no3","nppv")
 env_var_combs <- unlist(
   lapply(seq_along(ev), function(k) combn(ev, k, simplify = FALSE)),

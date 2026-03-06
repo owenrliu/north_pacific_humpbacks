@@ -650,7 +650,7 @@ f <- function(parms,dat)
   
   # REPORT(penv);
   # REPORT(llenv);
-  
+  REPORT(env_index);
   REPORT(BreedK);
   REPORT(FeedK);
   REPORT(Mix);
