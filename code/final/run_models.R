@@ -222,7 +222,7 @@ xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             rvars=c("epsEnv"),
             envVars=c("chl","mld","no3","nppv"),
             SF=c(0,1,1,1,1,1),WithMirror = 0,AllPlots=T,DoBoot=F,
-            DoBayes = F,Init=NULL)
+            DoBayes = T,Init=NULL)
 # environment K (with Bayesian sampling)
 xx <- DoRun(Code="B2F1",Yr1=1970, Yr2=2023,YrSDevs=2000,
             SensCase="BC",subdir="final/env-K Bayes",

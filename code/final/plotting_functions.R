@@ -67,7 +67,9 @@ plot_mixing <- function(obj){
   m <- pluck(obj,'report','Mix')
   rownames(m) <- BreedNames
   colnames(m) <- FeedNames
-  test <- as_tibble(m,rownames="Breed") |> pivot_longer(-Breed,names_to="Feed",values_to="Proportion") |> mutate(id=row_number())
+  test <- as_tibble(m,rownames="Breed") |> 
+    pivot_longer(-Breed,names_to="Feed",values_to="Proportion") |> 
+    mutate(id=row_number())
   p <- ggplot(test,aes(y=Proportion,axis1=Breed,axis2=Feed))+
     geom_alluvium(aes(fill=Breed))+
     geom_stratum(width=1/12,fill='black',color='white')+

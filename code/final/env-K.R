@@ -632,6 +632,7 @@ f <- function(parms,dat)
   REPORT(LogLike2a);
   REPORT(LogLike2b);
   REPORT(LogLikeKDevs);
+  REPORT(env_index);
   REPORT(KYr);
   REPORT(BreedK);
   REPORT(FeedK);

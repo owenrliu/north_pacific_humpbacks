@@ -196,6 +196,7 @@ f <- function(parms,dat)
     }
     
     # Allow for straying before feeding ground catches (Eqn B.9)
+    # This is generally turned off (by setting StrayBase below to 0)
     for (Ibreed in 1:Nbreed)
     {
       Nstray <- matrix(0,nrow=Nfeed,ncol=Nage)
@@ -237,7 +238,7 @@ f <- function(parms,dat)
     # Save the feeding ground numbers
     for (Ifeed in 1:Nfeed) NfS[Ifeed,Year] <- sum(NNN[,Ifeed,Year,2:Nage]);
     
-    # Remove feeding ground numbers (Eqn B.2)
+    # Remove feeding ground catches (Eqn B.2)
     Temp2 <- rep(0,Nbreed)
     for (Ifeed in 1:Nfeed)
     {
