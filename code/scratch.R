@@ -259,6 +259,26 @@ tibble(depl=seq(0,2,by=0.1)) |>
   ggplot(aes(depl,fec))+
   geom_point()
 
+## Straying (Eq B.7)
+fooStray <- function(depl1,depl2,totN1,rate){
+  # Relative depletion
+  DeplRat <- depl1/depl2;
+  
+  Ver1 <- 1.0/(1.0+exp(-100.0*(DeplRat-1.0)));
+  Ver2 <- 1.0/(1.0+exp(100.0*(DeplRat-2.0)));
+  Ver3 <- 1.0/(1.0+exp(-100.0*(DeplRat-2.0)));
+  Stray <- rate*(DeplRat-1.0)*Ver1*Ver2+rate*Ver3;
+  Stray*totN1
+}
+straytest <- crossing(depl1=seq(0,1,by=0.05),depl2=seq(0,1,by=0.05),rate=c(0.01,0.05,0.1)) |> 
+  mutate(totN1=1000) |> 
+  mutate(stray=pmap_dbl(list(depl1,depl2,rate,totN1),fooStray))
+straytest |> 
+  ggplot(aes(depl1,depl2,fill=stray))+
+  geom_tile()+
+  scale_fill_viridis()+
+  facet_wrap(~rate)
+
 #--------------------------------------------------------------------------------
 # Alluvial plot of mixing
 library(ggalluvial)
@@ -312,3 +332,15 @@ smoothCon(
   data = mcycle,
   absorb.cons = TRUE
 )[[1]]
+
+
+###----------Time to Recovery-----###
+
+# Analytically calculate time to 0.99K
+foo_recov <- function(rmax=0.09,p=0.99,N,K=77000){
+  (1/rmax)*log(p*(1-N/K)/((1-p)*(N/K))) 
+}
+tibble(N=seq(1,75000,length.out=100)) |> 
+  mutate(t=foo_recov(N=N)) |> 
+  ggplot(aes(N,t))+geom_line()+
+  geom_vline(xintercept=77000)

@@ -1,0 +1,800 @@
+---
+title: "Modeling time-varying survival in North Pacific humpback whales"
+subtitle: "More exciting title coming soon!"
+format: html
+toc: true
+toc_float: true
+toc-title: "Navigation"
+embed-resources: true
+editor: source
+execute:
+  echo: false
+  warning: false
+  error: false
+---
+
+```{r,include=F}
+library(here)
+library(knitr)
+library(kableExtra)
+```
+
+# Abstract
+
+# Introduction
+
+*recovering cetaceans and climate change*
+
+*paragraph on NP humpback population assessments and exploitation history*
+
+*barriers to recovery could include human interaction and climate variability*
+
+*conservation success vs. Blob effect*
+
+*mortality event vs. carrying capacity*
+
+How is this work different from previous?
+What is the benefit of the metapopulation structure?
+What is the (eventual) purpose of comparing and contrasting model structures?
+
+*introduce MHW- hypothesized environmental drivers*
+
+*we wanted to:*
+
+- measure the effect of the heatwave on the NP humpback metapopulation- where, when, and how much
+- investigate spatially-varying environmental drivers
+- track population growth rate and implications for recovery
+
+# Results and Discussion
+
+Go through hypotheses to introduce model types
+
+Figure 1- Map of zones, mixing estimates, feeding ground abundance
+Figure 2 - some sort of model comparison?? 
+Figure 3 - Environmental index of survival using envS model
+Figure 4 - Demographic outlook- total abundance, total mortality, realized growth rate, projected recovery
+
+# Materials and Methods
+
+We used data on abundance, stock structure, and removals, combined with environmental covariate data derived from an ocean model, to parameterize population dynamics models for North Pacific humpback whales. We designed four separate models which all had the same general structure, but varied in their specification of annual survival. Our general objectives were a) to assess whether and how humpback survival has varied since 2000; and b) to determine whether the inclusion of environmental information improves our estimation of survival. In the following, we describe in detail the data, models, diagnostics, and derived quantities of interest. @tbl-models reports model similarities and differences.
+
+## Data Sources
+
+### Stock Structure
+
+The population model is structured with multiple individual feeding and breeding grounds, or zones. This stock structure for the North Pacific humpback population was developed through IWC assessment process, and includes distinct breeding grounds in mainland Mexico (MX_ML), Mexican offshore islands (MX_AR), Central America, Asia, and Hawai'i, and feeding zones in Oregon/California (OR+CA), southern British Columbia/Washington (SBC+WA), Southeast Alaska and northern British Columbia (SEA+NBC), the Gulf of Alaska (GOA), the eastern Aleutian islands/Bering Sea (EAL+BER), and Russia/western Aleutians (RUS+WAL) (Figure XX). Therefore, the model requires data on abundance both within and across these zones, as well as information on the mixing of whales between zones (i.e., the proportional allocation of humpbacks from breeding zones to feeding zones, and from feeding zones to breeding zones), and data on direct, human-caused mortality due to bycatch, entanglement, and ship strikes.
+
+
+### International Whaling Commission
+
+*brief description of assessment history and objectives*
+
+### Abundance data
+
+During the IWC assessment process, relative and absolute abundance data were collated from multiple surveys to inform the population model (Table SX). We gathered time series data on total (North Pacific-wide) abundance, as well as the abundance within individual feeding and breeding grounds. One source of abundance data was the SPLASH (Structure of Populations, Levels of Abundance, and Status of Humpbacks) effort from 2004-2006. The SPLASH project used mark-recapture photo-identification sampling in both breeding and feeding zones of the North Pacific. @wade2021 estimated absolute abundance from a multi-strata model based on this mark-recapture sampling, and we adopt those estimates for most zones, with the Oregon/California feeding ground and Mexico breeding ground excepted. For the Mexico breeding zone, we used data from @martinez2017, who used a dataset moderately expanded from the SPLASH data (i.e., more years) to compute similar mark-recapture estimates to @wade2021. For the Oregon/California feeding zone, we use abundance estimates from @calambokidis2024, who used a closed-population Chao Mth model to estimate abundance, while accounting for heterogeneity in capture probabilities. @curtis2022 made an additional estimate for the Central America breeding zone for 2019-2021, using a one-dimensional spatial capture-recapture model. @baker1987 made an additional estimate for Hawai'i for 1980-1983, @calambokidis2017 provide an estimate for Hawai'i for 1991-1993, and @calambokidis1997 provide an estimate for the Asia breeding zone for 1991-1993. 
+
+For the Alaskan feeding zones, including the Bering Sea, Aleutian Islands, and Gulf of Alaska, we use data from the IWC-POWER (Pacific Ocean Whale and Ecosystem Research Programme) surveys. Because the survey strata from the POWER surveys do not exactly match the spatial zones in the present analysis, @matsuoka2023 prorated (translated) the POWER estimates to our model zones by counting the number of individual whales seen in each model zone, based on maps from the POWER cruise reports. For the Gulf of Alaska, we also use estimates from @zerbini2006 which derive from shipboard line-transect methods for the years 1987 and 2001-2003.
+
+For estimates of total population size across zones, we use data from @cheeseman2024, who estimated humpback abundance for each year from 2001-2021 by utilizing an extensive (and growing) catalog of research-based and citizen science photo-identification data collected through Happywhale.com, including data from the original SPLASH project. @cheeseman2024 applied a Chapman-Petersen estimator for abundance, and used multiple methods to address potential biases in the data, including using bias correction to account for geographically biased sampling during the years of the SPLASH project.
+
+Additional data provide estimates of relative, rather than absolute abundance. These data were incorporated as relative indices of abundance usually because they sampled only a subset of the spatial area associated with a particular zone. These include time series of relative abundance estimates for Hawai'i from @cheeseman2024 and @mobley2001, for Mexico from @cheeseman2024, for the Gulf of Alaska from @moran2023 and @arimitsu2022, for Southeast Alaska from @gabriele2022, and for the Bering Sea from @friday2012.
+
+Importantly, every abundance datum is associated with a coefficient of variation, allowing to the extent possible for the uncertainty from the original studies to be appropriately incorporated into the present analysis.
+
+### Removals
+
+Because humpbacks have been subject to human-caused mortality, we gathered estimates of removals of humpback whales due to directed hunting, bycatch, and ship strikes (Table SX). The IWC maintains data on commercial catches (which had largely ceased by the time our model begins in 1970). An analysis by @palka2024 provides the estimates of bycatches and ship strikes, using data from fishery observers, humpback stranding records, and previous IWC reports.
+
+### Mixing data
+
+Estimates of mixing between breeding and feeding zones come from two data sources that each calculate both forward (feeding to breeding) and reverse (breeding to feeding) mixing matrices. The first dataset is from @steel2024, who use mixed stock analyses of maternally inherited mtDNA haplotypes combined with biparentally inherited nuclear microsatellite markers to estimate forward apportionment from feeding areas to breeding areas for each breeding-feeding hypothesis. In the same study, @steel2024 estimated the reversed apportionment from breeding areas to feeding areas, based only on mtDNA haplotypes (Table SX).
+
+The second dataset for mixing comes from @wade2023, who used a multi-state mark recapture model to estimate the forward and reverse mixing matrices based on the SPLASH photo-identification dataset (Table SX).
+
+### Environmental covariate data
+
+We collected data on environmental covariates hypothesized to affect humpback survival in the North Pacific [@arimitsu2022;@gabriele2022]. We extracted covariate data from the GLORYSv12 (Global Ocean Reanalysis and Simulation) model from Mercator-Ocean [@lellouche2018]. The GLORYS suite of models provides both physical (0.083-degree spatial resolution) and biogeochemical (0.25-degree resolution) variables globally from 1993-present. Candidate environmental variables included sea surface temperature, mixed layer depth, chlorophyll, nitrate, and net primary production during the boreal summer (June to August). Using the spatial boundaries of the breeding and feeding zones (Figure SX), we produced zone-specific time series for each environmental variable by calculating mean values across all grid cells within each zone. We then translated these to anomaly time series representing deviations from a 1993-2013 variable-specific climatology. When incorporating them into the population model, each environmental time series was normalized (z-scored) by subtracting the mean and dividing by the standard deviation.
+
+## Population Model
+
+The population model for North Pacific humpback whales is an age-structured, sex-aggregated population dynamics model with multiple breeding stocks. Within the model, "herds" of whales have fidelity to a particular breeding and feeding ground combination. Each herd begins a model year on the breeding grounds, where direct removals on the breeding grounds are removed. Subsequently, on the feeding grounds, herds are subject to additional direct removals, as well as natural mortality (i.e., natural mortality is assumed to occur due to conditions on the feeding grounds, not the breeding grounds). Finally, at the end of the model year is when fecundity---and therefore next year's starting abundance---is calculated.
+
+The general form of the population dynamics is:
+$$
+N_{y+1,a}^{b,f} = \begin{cases} B_{y+1}^{b,f} & \text{if } a = 0 \\ \widetilde{N}_{y,a-1}^{b,f} S_{y,a-1}^{b,f} & \text{if } 0 < a < x \\ \widetilde{N}_{y,x-1}^{b,f} S_{y,x-1}^{b,f} + \widetilde{N}_{y,x}^{b,f} S_{y,x}^{b,f} & \text{if } a = x \end{cases}
+$$ {#eq-b1}
+
+where $N_{y,a}^{b,f}$ is the number at the start of year $y$ of age $a$ animals in the herd defined by breeding ground $b$ and feeding ground $f$, $S_{y,a}^{b,f}$ is their survival rate in year $y$, and $\widetilde{N}_{y,a}^{b,f}$ is the number after all removals during year $y$:
+
+$$
+\widetilde{N}_{y,a}^{b,f} = \widetilde{\widetilde{N}}_{y,a}^{b,f} \left( \widetilde{\widetilde{N}}_{y,0+}^{f} - C_y^f \right) / \widetilde{\widetilde{N}}_{y,0+}^{f}
+$$ {#eq-b2}
+
+where $C_y^f$ is removals from feeding ground $f$ in year $y$, and $\widetilde{\widetilde{N}}_{y,0+}^{f} = \sum_b \sum_a \widetilde{\widetilde{N}}_{y,a}^{b,f}$ is the total number of animals on feeding ground $f$ across herds and ages. The number of animals in each herd after breeding ground removals, but *before* feeding ground removals, is given by:
+
+$$
+\widetilde{\widetilde{N}}_{y,a}^{b,f} = N_{y,a}^{b,f} \left( N_{y,0+}^{b} - C_y^b \right) / N_{y,0+}^{b}
+$$ {#eq-b3}
+
+where $C_y^b$ is removals from breeding ground $b$ in year $y$, and $N_{y,0+}^b$ is the total abundance of breeding stock $b$ at the start of year $y$, ${{N}}_{y,0+}^{b} = \sum_f \sum_a {{N}}_{y,a}^{b,f}$.
+
+In the base version of the model, fecundity depends on the density of whales on the feeding grounds. The number of births for each herd, $B_y^{b,f}$, is determined by
+$$
+B_y^{b,f} = 0.5 \, f_y^f \, N_y^{b,f}
+$$ {#eq-b4}
+
+where $f_y^f$ is the fecundity for animals in feeding ground $f$. Fecundity varies between a minimum and maximum value,
+$$
+f_y^f = f_0 - (f_{\max} - f_0)\!\left(1 - \frac{N_{y,1+}^f}{K_{1+}^f}\right)
+$$ {#eq-b5}
+
+where $f_0$ is fecundity at carrying capacity, $f_{\max}$ is fecundity at zero population size, $K_{1+}^f$ is the age 1+ carrying capacity for feeding ground $f$, and $N_{y,1+}^f = \sum_b \sum_{a>0} \widetilde{\widetilde{N}}_{y,a}^{b,f}$. $f_0$ is determined from @eq-b1 under unfished equilibrium conditions, and $f_{\max}$ is calculated from a reparameterized version of the Lotka equation [@zerbini2010]:
+$$
+f_{\max} = \frac{(1 + r_{\max})^{L+1} - S_A(1 + r_{\max})^L}{S_A^L S_C}
+$$ {#eq-b6}
+
+where $r_{\max}$ is the maximum rate of increase and $L$ is age-at-maturity. $S_C$ and $S_A$ are base-case survival for age 0 and age 1+ humpbacks, respectively.
+
+Annual survival is a key quantity of interest in this study. In the base version of the model, survival is given by:
+$$
+S_{y,a}^{b,f} = \begin{cases} \dfrac{1}{1 + \exp\!\left(\varphi_C + \varepsilon_y^f\right)} & \text{(calves, } a = 0\text{)} \\[10pt] \dfrac{1}{1 + \exp\!\left(\varphi_A + \varepsilon_y^f\right)} & \text{(adults, } a > 0\text{)} \end{cases}
+$$ {#eq-b7a}
+$$
+\varphi_C = \ln\!\left(\frac{1}{S_C} - 1\right); \qquad \varphi_A = \ln\!\left(\frac{1}{S_A} - 1\right)
+$$ {#eq-b7b}
+
+where $\varepsilon_y^f$ is the survival deviation for feeding ground $f$ in year $y$.
+
+Initial conditions for each herd are determined by the total abundance at the start of the first model year, assuming an equilibrium population structure relative to $S_A$ and $S_C$
+
+### Mortality attribution
+
+The population model tracks annual survival, and therefore also tracks mortality. Additionally, we are interested in estimating the contribution of natural mortality to total mortality, relative to the effect of direct removals. Specifically, we want to track "excess" realized mortality due to survival deviating below its baseline value $S_A$. To estimate this excess mortality, we calculate, for each year, the difference between realized mortality of age 1+ whales (including the effect of any annual deviations) and a counterfactual scenario where survival is fixed at its baseline value $S_A$:
+
+$$
+M_y^{b,f} = (S_{y,1+}^{b,f}-S_A)N_{y,1+}^{b,f}
+$$ {#eq-mort}
+
+We can then compare these $M_y^{b,f}$ values to $C_y^b$ and $C_y^f$, and can track $\sum_b\sum_fM_y^{b,f}$ cumulatively across time to obtain an estimate of total excess mortality across the modeled period.
+
+### Model Variations
+
+A main objective of our analysis was to evaluate evidence for alternative specifications of annual survival, as well as to determine whether environmental data can help improve our estimation of survival. Therefore, we defined four models, representing different hypotheses for how environmental variability affects humpback populations (with model shorthand in **bold**).
+
+The base version of the model calculates survival according to @eq-b7a, with annual survival $\varepsilon_y^f$ specified as random normal deviates.
+$$
+\varepsilon_y^f \sim \mathcal{N}(0, \sigma_{\varepsilon}^2)
+$$ {#eq-b8}
+We call this the random-survival (**rS**) model.
+
+In the environment-survival (**envS**) model, we introduce environmental influences on survival by representing $\varepsilon_y^f$ as a function of environmental covariates:
+$$
+\boldsymbol{\omega^f} \Upsilon_y^f + \epsilon_y^f
+$$ {#eq-b11}
+
+where  $\boldsymbol{\omega^f}$ is a vector of coefficients for the environmental covariates derived for feeding ground $f$, $\Upsilon_y^f$ is a vector of environmental covariate data for feeding ground $f$ in year $y$, and together $\boldsymbol{\omega^f} \Upsilon_y^f$ is our environmental index of survival. $\epsilon_y^f \sim \mathcal{N}(0, \sigma_{\epsilon}^2)$ is the remaining (unexplained) variation in survival. Realized survival is then calculated through the logistic function in @eq-b7a, meaning that in the **rS** model, larger values of the environmental index correspond to an increasingly negative effect on survival.
+
+Alternatively, annual survival plausibly could be due to density-dependence only, with no other deviations, environmentally-driven or otherwise. In the density-dependence only model (**ddOnly**), deviations in annual survival are driven by Beverton-Holt density-dependence with respect to an estimated carrying capacity $K^f$ for each humpback feeding ground, and we replace @eq-b7a with,
+  
+$$
+S_{y,a}^{b,f} = \begin{cases} \dfrac{S_C}{1 + \alpha_S(\frac{N_{y,1+}^f}{K_{1+}^f})} & \text{(calves, } a = 0\text{)} \\[10pt] \dfrac{S_A}{1 + \alpha_S(\frac{N_{y,1+}^f}{K_{1+}^f})} & \text{(adults, } a = 1+\text{)} \end{cases}
+$$ {#eq-b9}
+where $\alpha_S$ represents the strength of density-dependence in survival. In this model (and the **envK** model described below), we estimate a similar density-dependence for fecundity, replacing @eq-b6 with the following:
+$$
+f_y^f = \dfrac{f_{max}}{1 + \beta_S(\frac{N_{y,1+}^f}{K_{1+}^f})}
+$$ {#eq-b10}
+
+where $\beta_S$ represents the strength of density-dependence in fecundity.
+
+Finally, it is possible that environmental variation could engender changes in carrying capacity rather than having a direct effect on survival. Our environment-K (**envK**) model is based on the formulation @stewart2023 used for understanding changes in gray whale survival. In the **envK** model, we introduce time-varying carrying capacity for each feeding ground:
+$$
+K_y^f = \bar{K^f}exp(\boldsymbol{\omega^f} \Upsilon_y^f + \epsilon_y^f)
+$$ {#eq-b12}
+where $\bar{K^f}$ is the estimate of long term mean carrying capacity for feeding ground $f$, and the environmental index is defined as in @eq-b11 with $\epsilon_y^f \sim \mathcal{N}(0, \sigma_{K}^2)$. The **envK** model then uses @eq-b9 and @eq-b10 to calculate survival and fecundity, respectively.
+
+### Environmental variable selection
+
+We used a variable selection process to select which combination of the five environmental covariates resulted in the most parsimonious model, balancing model fit with model complexity (number of parameters). We fit the model (see below) for every possible combination of the five environmental covariates, excluding models with both chlorophyll and net primary production, as they were highly collinear in all feeding zones. From among candidate models ($n$=23), we selected the set of covariates that minimized the value $2P-2\Gamma$, where $P$ is the number of environmental parameters (one per feeding ground per environmental covariate) and $\Gamma$ is the summed log likelihood of the survival deviates given $\sigma_{\varepsilon}^2$. To retain comparability among models, we performed this selection exercise with the **envS** model, then used the selected variables to fit the **envK** model.
+
+
+## Observation Model
+
+Generically, the observations of absolute abundance described above are linked to the population model as:
+$$
+n_y \sim \mathcal{N}(N_y, \sigma_{n_y})
+$$ {#eq-b13}
+where $n_y$ is an estimate of abundance (i.e., observation) in year $y$ with standard deviation $\sigma_{n_y}$ (Table SX). Each estimate is normally distributed with mean $N_y$ the model-estimated abundance. We use this generic form for abundance estimates linked to different age groups (age-0+ or age-1+), and for observations collected on breeding or feeding grounds (i.e., $N_y$ in @eq-b13 can represent total abundance $N_y$, breeding ground abundance $N_y^b$, or feeding ground abundance $\widetilde{N}_{y}^{f}$).
+
+The observations of relative abundance are represented in a similar way,
+$$
+n_y \sim \mathcal{N}(q_xN_y, \sigma_{n_y})
+$$ {#eq-b14}
+
+where $q_x$ is the constant of proportionality (i.e., survey bias) associated with the relative index of abundance that scales each survey $x$ from relative to absolute. Maximum likelihood values of $q_x$ are calculated analytically in the model.
+
+The proportion of breeding ground $b$ animals that migrate to feeding ground $f$ in year $y$ is:
+$$
+\rho_y^{b,f} = N_{y,1+}^{b,f}/N_{y,1+}^b
+$$ {#eq-b15}
+with a similar calculation for the reverse migration from feeding to breeding grounds. These proportions together form the mixing estimates---both forward and reverse apportionment of animals between breeding and feeding grounds. The mixing estimates are assumed to be Dirichlet-distributed based on the observations from both mixing datasets (genetics and mark-recapture).
+
+*need to finish this and explain the Dirichlet calculation and sample size*
+
+Note that in the model, removals are fixed (i.e., we use the removals data in the model, but they do not enter the observation model). This decision was made to improve identifiability and reduce the total number of estimated parameters.
+
+## Estimation
+
+The key estimated parameters in the model include maximum growth rate $r_{max}$, carrying capacity for each breeding ground $K^b$, the relative depletion of each stock at the beginning of the modeled period $N_{y=0}^b/K^b$, the mixing proportions, the annual survival deviations $\varepsilon_y^f$ (or carrying capacity deviations in the case of the **envK** model), the Beverton-Holt density-dependence parameters for the **ddOnly** and **envK** models, and the coefficients of the environmental index $\boldsymbol{\omega^f}$.  In addition, the sampling coefficients of variation reported in the data appear to be very low for three of the observed time series of abundance, so we introduce additional variance parameters for estimates of absolute abundance for the SBC+WA and OR+CA feeding grounds and the relative index of abundance for the GOA feeding ground. Vague or flat priors were used for all parameters.
+
+*maybe more about priors*.
+
+Because of a sparsity of abundance data for the RUS+WAL zone, the models could not estimate time-varying survival for that zone. Furthermore, for the **envK** model, we estimate time-varying carrying capacity for the Alaska zones only (EAL+BER, GOA, and SEA+NBC). All other zones in the **envK** model are subject to Beverton-Holt density-dependence only.
+
+The model is written in *RTMB* [@rtmb] but passed to Stan for Bayesian MCMC sampling using *rstan* and *tmbstan* [@rstan;@tmbstan]. We ran each of the four models (**rS, ddOnly**, **envS**, and **envK**) with four chains of 10,000 iterations each. We used standard diagnostics to assess model convergence. Specifically, we visually inspected trace plots for adequate chain mixing, ensured that the model did not have divergent transitions, that each estimated parameter had an effective sample size >1500 for all fitted parameters, and that the Gelman-Rubin convergence diagnostic (R-hat) was less than 1.01. Model fit was assessed based on the fits to the various indices of abundance.
+
+*maybe need more about assessing model fit*
+
+# Tables
+```{r,echo=F}
+#| label: tbl-models
+#| tbl-cap: "Summary of the population models used to assess time varying humpback survival."
+df <- data.frame(
+  Model=c("Random-survival","Environment-survival","Density-dependence only","Environmental-K"),
+  Shorthand=c("rS","envS","ddOnly","envK"),
+  Survival=c("Random effect","Survival indexed by environmental covariates","Beverton-Holt, with no environmental covariates","Carrying capacity indexed by environmental covariates,\nwith Beverton-Holt density-dependence")
+)
+kable(df, escape = FALSE, format = "html") |>
+  kable_styling(bootstrap_options = "striped")
+```
+
+# Figures
+
+## Random-survival
+
+### Key parameters
+```{r}
+#| label: fig-rSFE
+#| fig-cap: "Parameter estimates for the rS model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-rStotabun
+#| fig-cap: "Total abundance in the rS model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-rSbreedabun
+#| fig-cap: "Breeding abundance in the rS model."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-rSfeedabun
+#| fig-cap: "Feeding abundance in the rS model."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-rSmix
+#| fig-cap: "Estimates of mixing in the rS model."
+# 
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-rSfeedprop
+#| fig-cap: "Feeding to breeding proportions in the rS model."
+
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-rSbreedprop
+#| fig-cap: "Breeding to feeding proportions in the rS model."
+
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes proportions breed to feed.png'))
+```
+### Survival
+
+```{r}
+#| label: fig-rSsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the rS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes feed survival.png'))
+```
+
+### Mortality
+```{r}
+#| label: fig-rSmort
+#| fig-cap: "Estimated excess mortality by herd for the rS model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-rStotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-rStotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Same data as @fig-rStotrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-rStotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Same data as @fig-rStotrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-rSbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by breeding ground. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-rSbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the rS model, by breeding ground. Same data as @fig-rSbreedrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-rSbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by breeding ground. Same data as @fig-rSbreedrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-rSfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeding ground. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-rSfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeeding ground. Same data as @fig-rSfeedrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-rSfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeding ground. Same data as @fig-rSfeedrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed cume.png'))
+```
+
+## Environment-survival
+
+### Key parameters
+```{r}
+#| label: fig-envSFE
+#| fig-cap: "Parameter estimates for the envS model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-envStotabun
+#| fig-cap: "Total abundance in the envS model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-envSbreedabun
+#| fig-cap: "Breeding abundance in the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-envSfeedabun
+#| fig-cap: "Feeding abundance in the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-envSmix
+#| fig-cap: "Estimates of mixing in the envS model."
+# 
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-envSfeedprop
+#| fig-cap: "Feeding to breeding proportions in the envS model."
+
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-envSbreedprop
+#| fig-cap: "Breeding to feeding proportions in the envS model."
+
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-envSsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the envS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes feed survival.png'))
+```
+```{r}
+#| label: fig-envSsurvInd
+#| fig-cap: "Environmental index of survival for the envS model. The panels show (clockwise from top left) the coefficient estimates for environmental variables for each zone; the index of survival calculated from these coefficients; the remaining variation in survival ($\\sigma_{\\varepsilon}^2$ in @eq-b8); the realized survival rate; and posterior draws from the model showing the relationship between the environmental index and survival, where the solid line traces the assumed relationship from @eq-b7a."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes envir index.png'))
+```
+### Mortality
+```{r}
+#| label: fig-envSmort
+#| fig-cap: "Estimated excess mortality by herd for the envS model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-envStotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-envStotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model. Same data as @fig-envStotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-envStotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model. Same data as @fig-envStotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-envSbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-envSbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the envS model, by breeding ground. Same data as @fig-envSbreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-envSbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by breeding ground. Same data as @fig-envSbreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-envSfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-envSfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeeding ground. Same data as @fig-envSfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-envSfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeding ground. Same data as @fig-envSfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed cume.png'))
+```
+
+## Density-dependence only
+
+### Key parameters
+```{r}
+#| label: fig-ddOnlyFE
+#| fig-cap: "Parameter estimates for the ddOnly model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-ddOnlytotabun
+#| fig-cap: "Total abundance in the ddOnly model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-ddOnlybreedabun
+#| fig-cap: "Breeding abundance in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-ddOnlyfeedabun
+#| fig-cap: "Feeding abundance in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-ddOnlymix
+#| fig-cap: "Estimates of mixing in the ddOnly model."
+# 
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedprop
+#| fig-cap: "Feeding to breeding proportions in the ddOnly model."
+
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedprop
+#| fig-cap: "Breeding to feeding proportions in the ddOnly model."
+
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-ddOnlysurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes feed survival.png'))
+```
+
+### Mortality
+```{r}
+#| label: fig-ddOnlymort
+#| fig-cap: "Estimated excess mortality by herd for the ddOnly model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-ddOnlytotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-ddOnlytotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model. Same data as @fig-ddOnlytotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-ddOnlytotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model. Same data as @fig-ddOnlytotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-ddOnlybreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the ddOnly model, by breeding ground. Same data as @fig-ddOnlybreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by breeding ground. Same data as @fig-ddOnlybreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-ddOnlyfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeeding ground. Same data as @fig-ddOnlyfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeding ground. Same data as @fig-ddOnlyfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed cume.png'))
+```
+
+## Environment-K
+
+### Key parameters
+```{r}
+#| label: fig-envKFE
+#| fig-cap: "Parameter estimates for the envK model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-envKtotabun
+#| fig-cap: "Total abundance in the envK model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-envKbreedabun
+#| fig-cap: "Breeding abundance in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-envKfeedabun
+#| fig-cap: "Feeding abundance in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+```{r}
+#| label: fig-envKmix
+#| fig-cap: "Estimates of mixing in the envK model."
+# 
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-envKfeedprop
+#| fig-cap: "Feeding to breeding proportions in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-envKbreedprop
+#| fig-cap: "Breeding to feeding proportions in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-envKsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes feed survival.png'))
+```
+```{r}
+#| label: fig-envKsurvInd
+#| fig-cap: "Environmental index of survival for the envK model.The panels show (clockwise from top left) the fitted Beverton-Holt type relationship between depletion ($\\frac{N_y^f}{K^f}$) and survival; posterior draws from the model showing the relationship between the environmental index and carrying capacity, where brighter areas indicate a higher density of posterior samples; posterior draws from the model showing the relationship between the environmental index and survival; the realized survival rate; the remaining variation in survival (@eq-b12); and, the environmental index of time-varying K."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes envir index.png'))
+```
+### Mortality
+```{r}
+#| label: fig-envKmort
+#| fig-cap: "Estimated excess mortality by herd for the envK model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-envKtotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-envKtotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model. Same data as @fig-envKtotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total rate.png'))
+```
+
+```{r}
+#| label: fig-envKtotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model. Same data as @fig-envKtotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-envKbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-envKbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the envK model, by breeding ground. Same data as @fig-envKbreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-envKbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by breeding ground. Same data as @fig-envKbreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-envKfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-envKfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeeding ground. Same data as @fig-envKfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-envKfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeding ground. Same data as @fig-envKfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed cume.png'))
+```
+
+## Comparison
+
+### Variation in survival estimates
+We compared variance parameters $\sigma_{\varepsilon}^2$ (rS, @eq-b8), $\sigma_{\epsilon}^2$ (envS, @eq-b11), $\sigma_{K}^2$ (envK, @eq-b12) to determine whether informing the model with environmental covariates reduces our remaining uncertainty in survival.
+
+```{r}
+#| label: fig-sigmacomp
+#| fig-cap: "Posterior distributions of unexplained variablity in survival for the three models that estimate time-varying survival."
+
+knitr::include_graphics(here('plots','final','survival variability sigma comparison.png'))
+```
+### Growth rate
+```{r}
+#| label: fig-rcomp
+#| fig-cap: "Comparison of estimates of maximum growth rate $r_{max}$ by model type. Right panel shows the same data as the left, with the ddOnly model removed for visual clarity."
+
+knitr::include_graphics(here('plots','final','Bayes r comp.png'))
+```
+### Carrying capacity
+```{r}
+#| label: fig-Kcomp
+#| fig-cap: "Comparison of estimates of carrying capacity $K^b$ by breeding ground and model type. Points are median estimates, while thick and dotted lines indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','Bayes K comp.png'))
+```
+### Initial depletion
+```{r}
+#| label: fig-BKcomp
+#| fig-cap: "Comparison of estimates of initial depletion $\\frac{N_{y=0}^b}{K^b}$ by breeding ground and model type. Points are median estimates, while thick and dotted lines indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','Bayes BK comp.png'))
+```
+### Environmental variable selection
+```{r}
+#| label: fig-envSeledt
+#| fig-cap: "Model selection exercise for choosing appropriate environmental variables. The envS model was run with all possible combinations of the five candidate environmental variables (number of covariates increases with model number along the x-axis). For each model, we calculated the overall likelihood of the abundance data, the summed log likelihood of the survival deviates $\\Gamma$, the likelihood penalty, and an AIC-like score calculated as $2P-2\\Gamma$, where $P$ is the number of environmental parameters (one per feeding ground per environmental covariate)."
+
+knitr::include_graphics(here('plots','final','env-survival variable testing.png'))
+```

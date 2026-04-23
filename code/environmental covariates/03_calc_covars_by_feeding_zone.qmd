@@ -323,7 +323,7 @@ calc_ts <- function(v="thetao",year_start=1993,year_end=2024,month_start=6,month
 }
 ```
 
-First, for sea surface temperature.
+First, for sea surface temperature, June to August mean.
 
 ```{r}
 sst_ts <- map(fzones$zoneID,function(zone) {
@@ -340,11 +340,11 @@ all_sst_p <- sst_ts |>
 all_sst_p
 ```
 
-Chlorophyll.
+Chlorophyll, April/May mean.
 
 ```{r}
 chl_ts <- map(fzones$zoneID,function(zone) {
-  calc_ts(v="chl",year_start=1993,year_end=2024,month_start=6,month_end=8,z=zone)
+  calc_ts(v="chl",year_start=1993,year_end=2024,month_start=4,month_end=5,z=zone)
 }) |> bind_rows()
 
 all_chl_p <- chl_ts |> 
@@ -357,7 +357,7 @@ all_chl_p <- chl_ts |>
 all_chl_p
 ```
 
-Mixed Layer Depth
+Mixed layer depth, June to August mean.
 
 ```{r}
 mld_ts <- map(fzones$zoneID,function(zone) {
@@ -374,11 +374,11 @@ all_mld_p <- mld_ts |>
 all_mld_p
 ```
 
-Nitrate
+Nitrate, April/May mean
 
 ```{r}
 no3_ts <- map(fzones$zoneID,function(zone) {
-  calc_ts(v="no3",year_start=1993,year_end=2024,month_start=6,month_end=8,z=zone)
+  calc_ts(v="no3",year_start=1993,year_end=2024,month_start=4,month_end=5,z=zone)
 }) |> bind_rows()
 
 all_no3_p <- no3_ts |> 
@@ -392,11 +392,11 @@ all_no3_p <- no3_ts |>
 all_no3_p
 ```
 
-Net Primary Production
+Net primary production, April/May.
 
 ```{r}
 nppv_ts <- map(fzones$zoneID,function(zone) {
-  calc_ts(v="nppv",year_start=1993,year_end=2024,month_start=6,month_end=8,z=zone)
+  calc_ts(v="nppv",year_start=1993,year_end=2024,month_start=4,month_end=5,z=zone)
 }) |> bind_rows()
 
 all_nppv_p <- nppv_ts |> 
@@ -407,6 +407,7 @@ all_nppv_p <- nppv_ts |>
   geom_hline(yintercept=0,linetype=2)+
   facet_wrap(~zoneID,scales='free_y')+
   labs(title="Net Primary Production, 1993 to 2024")
+
 all_nppv_p
 ```
 
@@ -491,7 +492,7 @@ ngoa_chl_ts_p
 
 ### All Regions - Anomalies
 
-Produce time series like this for temperature and chlorophyll for all feeding zones. Now using June to August, with a baseline of 1993-2013.
+Produce time series like this for all variables and for all feeding zones. Now using a baseline of 1993-2013. Temperature and MLD will be averaged over the summer months (when the whales are feeding), while we measure chlorophyll, NO3, and NPPV in April/May to capture the spring bloom dynamics.
 
 ```{r}
 sst_anoms <- map(fzones$zoneID,function(zone) {
@@ -513,7 +514,7 @@ Now for chlorophyll.
 
 ```{r}
 chl_anoms <- map(fzones$zoneID,function(zone) {
-  calc_anom_ts(v="chl",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+  calc_anom_ts(v="chl",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=4,month_end=5,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
 }) %>% bind_rows()
 
 all_chl_p <- chl_anoms %>% 
@@ -522,7 +523,7 @@ all_chl_p <- chl_anoms %>%
   geom_line()+
   geom_vline(xintercept=2015,linetype=2)+
   geom_hline(yintercept=0,linetype=2)+
-  facet_wrap(~zoneID)+
+  facet_wrap(~zoneID,scales='free')+
   labs(title="chl summer anomaly, 1993 to 2013 baseline")
 all_chl_p
 ```
@@ -549,7 +550,7 @@ Nitrate
 
 ```{r}
 no3_anoms <- map(fzones$zoneID,function(zone) {
-  calc_anom_ts(v="no3",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+  calc_anom_ts(v="no3",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=4,month_end=5,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
 }) %>% bind_rows()
 
 all_no3_p <- no3_anoms %>% 
@@ -567,7 +568,7 @@ Net primary production
 
 ```{r}
 nppv_anoms <- map(fzones$zoneID,function(zone) {
-  calc_anom_ts(v="nppv",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
+  calc_anom_ts(v="nppv",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=4,month_end=5,z=zone,baseline_fun='mean') %>% mutate(zoneID=zone)
 }) %>% bind_rows()
 
 all_nppv_p <- nppv_anoms %>% 
@@ -576,7 +577,7 @@ all_nppv_p <- nppv_anoms %>%
   geom_line()+
   geom_vline(xintercept=2015,linetype=2)+
   geom_hline(yintercept=0,linetype=2)+
-  facet_wrap(~zoneID)+
+  facet_wrap(~zoneID,scales='free')+
   labs(title="nppv summer anomaly, 1993 to 2013 baseline")
 all_nppv_p
 ```
@@ -588,5 +589,67 @@ Save these anomaly timeseries
 ```{r}
 out <- list(sst=sst_anoms,chl=chl_anoms,mld=mld_anoms,no3=no3_anoms,nppv=nppv_anoms)
 write_rds(out,here('data','processed covariates','glorys_anomalies_by_zone.rds'))
+```
+
+## Comparative plots
+
+Plot the final time series that will be used to drive the models
+
+```{r}
+anommat <- map2(out,c('sst','chl','mld','no3','nppv'),\(x,y) x |> mutate(variable=y)) |> 
+  bind_rows() |> 
+  dplyr::select(-sd) |> 
+  group_by(zoneID,variable) |>
+  mutate(anom_norm=(anom-mean(anom))/sd(anom)) |> 
+  ungroup()
+
+# Time series
+panom_ts <- anommat |> 
+  filter(zoneID %in%c("EAL+BER_16","GOA_18","OR+CA_13","RUS+WAL_15","SBC+WA_11","SEA+NBC_12")) |> 
+  ggplot(aes(year,anom_norm,color=variable))+
+  geom_line()+
+  facet_grid(variable~zoneID)+
+  geom_hline(yintercept=0,linetype=2)+
+  scale_color_manual(values=viridis_pal(option="turbo")(5))+
+  labs(y="Anomaly",x="Year")+
+  theme_minimal()+theme(panel.border=element_rect(color='black',fill=NA))
+panom_ts
+ggsave(here('plots','final','environmental covariates','anomaly timeseries.png'))
+```
+
+
+
+How closely correlated are all these variables?
+
+```{r}
+library(corrplot)
+
+anomwide <- anommat |> 
+  select(-anom) |> 
+  pivot_wider(names_from="variable",values_from="anom_norm")
+
+zn <-  anomwide |> 
+  group_by(zoneID) |> 
+  group_keys()
+
+anomzl <-  anomwide |> 
+  group_by(zoneID) |> 
+  group_split()
+
+anomcor <- map(anomzl,\(x) x |> select(sst:nppv) |> cor())
+names(anomcor) <- zn$zoneID
+
+# Save anomaly correlation plots for feeding grounds in this study
+whichp <- which(names(anomcor)%in% c("EAL+BER_16","GOA_18","OR+CA_13","RUS+WAL_15","SBC+WA_11","SEA+NBC_12"))
+
+walk(whichp,\(x){
+  corm <- anomcor[[x]]
+  nm <- names(anomcor)[x]
+  png(here('plots','final','environmental covariates',paste(nm,"corr.png")), width = 1000, height = 1000, res = 200) 
+  
+  corrplot(corm, method = "ellipse",type='upper',addCoef.col='black',title=nm,mar=c(0,0,2,0))
+  
+  dev.off()
+})
 ```
 

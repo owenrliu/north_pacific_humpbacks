@@ -95,7 +95,9 @@ f <- function(parms,dat)
     tempE <- envParams[,i]*envData[[i]][whichFeed,]
     env_index <- env_index+tempE
   }
-  SFdevYr[whichFeed,YrMatch:Nyr] <- env_index+epsEnv
+  # survival devs are the environmental index plus extra random devs
+  devs <- env_index+epsEnv
+  SFdevYr[whichFeed, YrMatch:Nyr] <- matrix(devs, nrow = length(whichFeed))
   
   #polynomials
   # for(i in 1:length(whichFeed)){
@@ -142,9 +144,8 @@ f <- function(parms,dat)
   # Set up basis for A and K (not used in the base mode)
   ParAV <- matrix(0,nrow=Nfeed,ncol=Nyr+1);
   MultK <- matrix(0,nrow=Nfeed,ncol=Nyr+1);
-  for (Year in 1:(Nyr+1))
-    for (Ifeed in 1:Nfeed)
-    { ParAV[Ifeed,Year] <- ParA; MultK[Ifeed,Year] <- 1; }
+  ParAV[] <- ParA
+  MultK[] <- 1
   
   # Set up K (1+) by herd, breeding stock, and feeding ground
   # K by breeding ground
@@ -238,7 +239,8 @@ f <- function(parms,dat)
         if (MixI[Ibreed,Ifeed]!=0) NNN[Ibreed,Ifeed,Year,MinAgeC:Nage] <- NNN[Ibreed,Ifeed,Year,MinAgeC:Nage]*Temp1/Nb0P;
     }
     
-    # Allow for straying before feeding ground catches (Eqn B.9)
+    # Allow for straying before feeding ground catches (Eqn B.7)
+    # This is turned off by default (when StrayBase below is 0)
     for (Ibreed in 1:Nbreed)
     {
       Nstray <- matrix(0,nrow=Nfeed,ncol=Nage)
@@ -248,22 +250,28 @@ f <- function(parms,dat)
           if (Ifeed > 1)
             if(MixI[Ibreed,Ifeed-1] !=0)
             {
+              # Straying depends on relative depletion between a feeding ground
+              # and the "previous" feeding ground, where their order matches
+              # their geographic order
               Depl1 <- sum(NNN[Ibreed,Ifeed,Year,2:Nage])/NNK[Ibreed,Ifeed];
               Depl2 <- sum(NNN[Ibreed,Ifeed-1,Year,2:Nage])/NNK[Ibreed,Ifeed-1];
+              # Relative depletion
               DeplRat <- Depl1/Depl2;
               
               Ver1 <- 1.0/(1.0+exp(-100.0*(DeplRat-1.0)));
               Ver2 <- 1.0/(1.0+exp(100.0*(DeplRat-2.0)));
               Ver3 <- 1.0/(1.0+exp(-100.0*(DeplRat-2.0)));
               Stray <- StrayBase*(DeplRat-1.0)*Ver1*Ver2+StrayBase*Ver3;
-              Nstray[Ifeed,] <- Nstray[Ifeed] - Stray*NNN[Ibreed,Ifeed,Year,];
-              Nstray[Ifeed-1,] <- Nstray[Ifeed-1] + Stray*NNN[Ibreed,Ifeed,Year,];
+              Nstray[Ifeed,] <- Nstray[Ifeed,] - Stray*NNN[Ibreed,Ifeed,Year,];
+              Nstray[Ifeed-1,] <- Nstray[Ifeed-1,] + Stray*NNN[Ibreed,Ifeed,Year,];
             }
+          # For the first feeding ground, compare to the second.
           if (Ifeed < Nfeed)
             if(MixI[Ibreed,Ifeed+1] !=0)
             {
               Depl1 <- sum(NNN[Ibreed,Ifeed,Year,2:Nage])/NNK[Ibreed,Ifeed];
               Depl2 <- sum(NNN[Ibreed,Ifeed+1,Year,2:Nage])/NNK[Ibreed,Ifeed+1];
+              # Relative depletion
               DeplRat <- Depl1/Depl2;
               
               Ver1 = 1.0/(1.0+exp(-100.0*(DeplRat-1.0)));
@@ -274,6 +282,7 @@ f <- function(parms,dat)
               Nstray[Ifeed+1,] <- Nstray[Ifeed+1,] + Stray*NNN[Ibreed,Ifeed,Year,];
             }
         }
+      # Add the strays to their new feeding grounds
       for (Ifeed in 1:Nfeed) NNN[Ibreed,Ifeed,Year,] <- NNN[Ibreed,Ifeed,Year,] + Nstray[Ifeed,];
     }  # Each breeding stock
     
@@ -356,8 +365,7 @@ f <- function(parms,dat)
           # ========================================================================================================================
           # Ages 2+
           NNN[Ibreed,Ifeed,Year+1,2] <- NNN[Ibreed,Ifeed,Year,1] * SurvJuv
-          for (Iage in 3:Nage)
-            NNN[Ibreed,Ifeed,Year+1,Iage] <- NNN[Ibreed,Ifeed,Year,Iage-1] * SAuse
+          NNN[Ibreed,Ifeed,Year+1,3:Nage] <- NNN[Ibreed,Ifeed,Year,2:(Nage-1)] * SAuse
           NNN[Ibreed,Ifeed,Year+1,Nage]  <- NNN[Ibreed,Ifeed,Year+1,Nage] + NNN[Ibreed,Ifeed,Year,Nage] * SAuse
           
           # Recruits
@@ -376,6 +384,10 @@ f <- function(parms,dat)
       
      } # close Ibreed
     } # close Year   
+  
+  # =================================================================================================================================
+  # Last Year and Summary
+  # =================================================================================================================================
   
   # Save herd numbers for the start of the final year (Nyr+1)
   for (Ibreed in 1:Nbreed)
@@ -398,6 +410,17 @@ f <- function(parms,dat)
     NfitFeed[1,Ifeed,Nyr+1] <- sum(NNN[,Ifeed,Nyr+1,1:Nage])
     NfitFeed[2,Ifeed,Nyr+1] <- sum(NNN[,Ifeed,Nyr+1,2:Nage])
     NfitFeed[3,Ifeed,Nyr+1] <- sum(NNN[,Ifeed,Nyr+1,MatAgeT:Nage])
+  }
+  
+  # Summary outputs
+  LogNT<- matrix(0,nrow=3,ncol=Nyr+1);                                     # Log total numbers
+  LogNb <- array(0,dim=c(3,Nbreed,Nyr+1));                                 # Breeding numbers
+  LogNf <- array(0,dim=c(3,Nfeed,Nyr+1));                                  # Feeding numbers
+  for (Icomp in 1:3)
+  {
+    for (Ibreed in 1:Nbreed) for (Iyr in 1:(Nyr+1)) LogNb[Icomp,Ibreed,Iyr] <- log(NfitBreed[Icomp,Ibreed,Iyr]);
+    for (Ifeed in 1:Nfeed)  for (Iyr in 1:(Nyr+1)) LogNf[Icomp,Ifeed,Iyr] = log(NfitFeed[Icomp,Ifeed,Iyr]);
+    for (Iyr in 1:(Nyr+1)) { TotalNT <- sum(NfitBreed[Icomp,,Iyr]); LogNT[Icomp,Iyr] = log(TotalNT); }
   }
   
   # =================================================================================================================================
@@ -601,7 +624,7 @@ f <- function(parms,dat)
   envPenal <- -sum(dnorm(envParams,0.0,1.0,log=T))
   Penal <- Penal+envPenal
   
-  # final likelihood
+  # final neg log likelihood
   datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b) + LogLikeS;
   # datalike <- LogLike1 + sum(LogLike2a) + sum(LogLike2b)+llenv;
   neglogL <-  Penal + datalike;
@@ -611,17 +634,6 @@ f <- function(parms,dat)
   # Report Outputs
   # =================================================================================================================================
   
-  # Summary outputs
-  LogNT<- matrix(0,nrow=3,ncol=Nyr+1);                                     # Log total numbers
-  LogNb <- array(0,dim=c(3,Nbreed,Nyr+1));                                 # Breeding numbers
-  LogNf <- array(0,dim=c(3,Nfeed,Nyr+1));                                  # Feeding numbers
-  for (Icomp in 1:3)
-  {
-    for (Ibreed in 1:Nbreed) for (Iyr in 1:(Nyr+1)) LogNb[Icomp,Ibreed,Iyr] <- log(NfitBreed[Icomp,Ibreed,Iyr]);
-    for (Ifeed in 1:Nfeed)  for (Iyr in 1:(Nyr+1)) LogNf[Icomp,Ifeed,Iyr] = log(NfitFeed[Icomp,Ifeed,Iyr]);
-    for (Iyr in 1:(Nyr+1)) { TotalNT <- sum(NfitBreed[Icomp,,Iyr]); LogNT[Icomp,Iyr] = log(TotalNT); }
-  }
-
   ADREPORT(LogNT);
   ADREPORT(LogNb);
   ADREPORT(LogNf);

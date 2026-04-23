@@ -128,7 +128,7 @@ mom6.regrid.fn <- here('data','mom6','regrid','sst.regrid.nc')
 ```
 
 ```{r,eval=F}
-# Regridding goes from ROMS curvilinear grid to a regular, 0.1x0.1degree lat/lon grid
+# Regridding goes from curvilinear grid to a regular, 0.1x0.1degree lat/lon grid
 # Regridding is done with cubic interpolation
 gdal_utils("warp",
            source=mom6.fl,

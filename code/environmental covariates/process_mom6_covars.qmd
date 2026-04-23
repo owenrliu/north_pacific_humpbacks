@@ -1,0 +1,577 @@
+---
+title: "MOM6 Covariate Construction"
+format: html
+toc: true
+toc_float: true
+toc-title: "Navigation"
+embed-resources: true
+editor: source
+---
+
+```{r setup, include=F, warning=F, message=F}
+library(tidync)
+library(sf)
+library(terra)
+library(tidyverse)
+library(tidyterra)
+library(viridis)
+library(colorspace)
+library(here)
+library(tictoc)
+theme_set(theme_classic())
+knitr::opts_chunk$set(message=F,warning=F)
+```
+
+## Feeding Zones
+
+Zones in blue are areas for which we are interested in developing time series. Because the humpback assessment model uses multiple scenarios, there are some zones that are combinations of others. For example, the Western Gulf of Alaska is either its own zone (WGOA) or is included with the Eastern Aleutians and Bering Sea (EAL+BER+WGOA).
+
+```{r}
+zones <- read_sf(here('data','spatial','NPhump_zones_scenarios.shp'))
+zones_bbs <- map(zones$geometry,st_bbox)
+fzones <- zones |> filter(Feeding) # feeding zones only
+
+# make a vect() version for terra package
+fzonesv <- vect(fzones)
+
+zones |> 
+  ggplot()+
+  geom_sf(aes(fill=Feeding))+labs(fill="Feeding\nGround")
+```
+
+## Regrid Variables
+
+Variables currently include:
+* sst: Sea surface temperature
+* mld: Mixed layer depth
+* nppv: Net primary production, mol N/m^2/s
+* no3: Surface nitrate, mmol/m^3
+* chlos: Total surface mass concentration of total phytoplankton expressed as chlorophyll in sea water, kg/m^3
+* nlgz: large zooplankton 100m-integrated biomass, mol/m^2
+
+```{r}
+# file names
+mom6.sst.fn <- here('data','mom6','raw','tos.nep.full.hcast.monthly.regrid.r20250509.199301-202412.nc')
+mom6.no3.fn <- here('data','mom6','raw','sfc_no3.nep.full.hcast.monthly.regrid.r20250912.199301-202506.nc')
+mom6.nppv.fn <- here('data','mom6','raw','wc_vert_int_npp.nep.full.hcast.monthly.regrid.r20250912.199301-202506.nc')
+mom6.mld.fn <- here('data','mom6','raw','MLD_003.nep.full.hcast.monthly.regrid.r20250912.199301-202506.nc')
+mom6.nlgz.fn <- here('data','mom6','raw','nlgz_100.nep.full.hcast.monthly.regrid.r20250912.199301-202506.nc')
+mom6.chlos.fn <- here('data','mom6','raw','chlos.nep.full.hcast.monthly.regrid.r20250912.199301-202506.nc')
+```
+
+Gather the model times and corresponding dates for each layer in the nc files/rasters
+
+```{r}
+# times
+nct <- nc_open(mom6.mld.fn)
+times <- ncvar_get(nct,"time")
+# these are in "days since 1993-01-01"
+dates <- ymd("1993-01-01")+days(floor(times))
+nc_close(nct)
+# January 1993 to June 2025
+```
+
+Make file names
+
+```{r}
+regrid.dir <- here('data','mom6','regrid')
+if(!dir.exists(regrid.dir)) dir.create(regrid.dir)
+mom6.rg.sst.fn <- here('data','mom6','regrid','sst.regrid.nc')
+mom6.rg.no3.fn <- here('data','mom6','regrid','no3.regrid.nc')
+mom6.rg.nppv.fn <- here('data','mom6','regrid','nppv.regrid.nc')
+mom6.rg.mld.fn <- here('data','mom6','regrid','mld.regrid.nc')
+mom6.rg.nlgz.fn <- here('data','mom6','regrid','nlgz.regrid.nc')
+mom6.rg.chlos.fn <- here('data','mom6','regrid','chlos.regrid.nc')
+fns <- c(mom6.rg.sst.fn,mom6.rg.no3.fn,mom6.rg.nppv.fn,mom6.rg.mld.fn,mom6.rg.nlgz.fn,mom6.rg.chlos.fn)
+```
+
+Regrid the variables
+
+```{r,eval=F}
+# Regridding goes from curvilinear grid to a regular, 0.1x0.1degree lat/lon grid
+# Regridding is done with cubic interpolation
+# sst
+tic('warping sst')
+gdal_utils("warp",
+           source=mom6.sst.fn,
+           destination = mom6.rg.sst.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+# no3
+tic('warping no3')
+gdal_utils("warp",
+           source=mom6.no3.fn,
+           destination = mom6.rg.no3.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+# nppv
+tic('warping nppv')
+gdal_utils("warp",
+           source=mom6.nppv.fn,
+           destination = mom6.rg.nppv.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+# mld
+tic('warping mld')
+gdal_utils("warp",
+           source=mom6.mld.fn,
+           destination = mom6.rg.mld.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+#nlgz
+tic('warping nlgz')
+gdal_utils("warp",
+           source=mom6.nlgz.fn,
+           destination = mom6.rg.nlgz.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+#chlos
+tic('warping chlos')
+gdal_utils("warp",
+           source=mom6.chlos.fn,
+           destination = mom6.rg.chlos.fn,
+           options= c(
+             "-t_srs","EPSG:4326",
+             "-r","cubic",
+             "-tr","0.0833333333333333", "0.0833333333333333",
+             "-dstnodata","None", # try to force correct NA handling
+             "-dstalpha", # this is to include a "nodata" identifier as the last band
+             "-overwrite"))
+toc()
+```
+
+## Extract
+
+Raster mask for cropping out areas that are too deep
+
+```{r}
+mask1k<- rast(here('data','spatial','GLORYS_phys_1000m_mask.tif'))
+rtmp <- rast(fns[1])
+mask1k <- resample(mask1k,rtmp)
+plot(mask1k,main="1000m mask")
+```
+
+```{r}
+# extract the appropriate data for a chosen variable, year, month, and zone
+# as of 04/17/26, the variables we have downloaded include:
+# SST, mixed layer depth, net primary production, surface nitrate, and large zooplankton 100m biomass
+extr_yr_mth_zone <- function(v,y,m,z,rmask=mask1k){
+  
+  # find the right nc file to load using the files table we made above
+  fn <- fns[grepl(v,fns)]
+  
+  # time slice we want
+  targ <- as.Date(paste(y,m,"15",sep="-"))
+  which_time <- which.min(abs(dates - targ))
+  
+  # now, finally we can load the data
+  datr <- rast(here(fn),subds=which_time) # raster for the right zone and time
+  rext <- ext(datr) |> as.vector() # extent/bounding box of the raster
+  if(any(rext<0)) datr <- rotate(datr) # convert from [-180,180] to [0,360] if needed
+  rmaskcrop <- crop(rmask,datr) # crop the raster mask to the extent of the data
+  
+  # use the mask to set NA for unwanted cells (>1000m deep) in the data raster
+  datr <- mask(datr,rmaskcrop)
+  
+  # trim the final raster using the zone polygon to set NA for cells not covered by the polygon 
+  zv <- fzonesv |> subset(fzonesv$zoneID==z)
+  outr <- datr |> mask(zv) |> 
+    # remove outer white space
+    trim() |> 
+    # remove edge effects setting things to exactly zero
+    subst(0,NA)
+  
+  # if nppv, convert to mol N m^-2 d^-1 from mol N m^-2 s^-1
+  if(v=="nppv") outr=outr*86400
+  
+  return(outr)
+}
+```
+
+Test 
+
+```{r}
+# arbitrary- mixed layer depth in january 2022 for the Eastern Aleutians and Bering Sea
+mldj2022 <- extr_yr_mth_zone("mld",2022,1,"EAL+BER_16")
+plot(mldj2022,main="MLD January 2022")
+```
+```{r}
+nppvsep2022 <- extr_yr_mth_zone("nppv",1995,9,"EAL+BER_16")
+plot(nppvsep2022,main="NPPV September 1995")
+```
+
+## Summary function
+
+With the ability to extract the environmental data for the correct zone and month combinations, the last thing we need is a function to perform some general summaries across multiple layers/time slices of those extractions.
+
+This summary function extracts the data for a given variable, ranges of years/months, and zone. Then it stacks those data slices into a multilayer raster (or raster brick), and performs a specified function `fun` on that stack using `terra::app()`. We can use the function for, e.g., calculating the mean sst field in particular zones and across specific years. The `app()` function applies to the values of each cell of the raster, across layers/time. In other words, `app(rast,"mean")` would return a single-layer raster, whose cell values are equal to the mean in each cell across time.
+
+```{r}
+calc_summary_r <- function(v,year_start,year_end,month_start,month_end,z,fun="mean"){
+  
+  # find all the rasters to extract
+  year_range <- year_start:year_end
+  month_range <- month_start:month_end
+  slices <- crossing(y=year_range,m=month_range)
+  
+  # extract the data then combine into a stack
+  rb <- map2(slices$y,slices$m,\(y,m) extr_yr_mth_zone(v,y,m,z,rmask = mask1k)) |> rast()
+  
+  # apply a function across the stack
+  outr <- app(rb,fun)
+  
+  return(outr)
+}
+```
+
+### Tests
+
+Try out and explore these functions. First (somewhat arbitrarily) let's explore August SST in the northern Gulf of Alaska. Here we use the functions to calculate a few different versions of SST.
+
+August mean SST, 1993:2013, Northern Gulf of Alaska.
+
+```{r}
+ngoa_mean_sst <- calc_summary_r(v="sst",year_start=1993,year_end=2013,month_start=8,month_end=8,z="NGOA_8")
+
+x1 <- ggplot()+
+  geom_spatraster(data=ngoa_mean_sst)+
+  geom_sf(data=zones |> filter(Name=="NGOA"),fill=NA)+
+  labs(title="NGOA Mean August SST\n1993 to 2013")+
+  scale_fill_viridis(option='turbo',na.value=NA,limits=c(10,16))
+```
+
+90th quantile August temperature for the same region.
+
+```{r}
+# 90th quantile August temperature for the same region
+ngoa_sst90 <- calc_summary_r(v="sst",year_start=1993,year_end=2013,month_start=8,month_end=8,z="NGOA_8",
+                                fun = \(x) quantile(x,0.9,na.rm=T))
+x2 <- ggplot()+
+  geom_spatraster(data=ngoa_sst90)+
+  geom_sf(data=zones |> filter(Name=="NGOA"),fill=NA)+
+  labs(title="NGOA 90th quantile August SST\n1993 to 2013")+
+  scale_fill_viridis(option='turbo',na.value=NA,limits=c(10,16))
+```
+
+2016 August temperature for the same region
+
+```{r}
+# 2016 August temperature for the same region
+ngoa_aug2016 <- extr_yr_mth_zone('sst',2016,8,"NGOA_8")
+x3 <- ggplot()+
+  geom_spatraster(data=ngoa_aug2016)+
+  geom_sf(data=zones |> filter(Name=="NGOA"),fill=NA)+
+  labs(title="NGOA August SST, 2016")+
+  scale_fill_viridis(option='turbo',na.value=NA,limits=c(10,16))
+```
+
+Finally, anomaly relative to 1993:2013 mean. we can just substract the rasters
+
+```{r}
+# anomaly relative to 1993:2013 mean. we can just substract the rasters
+ngoa_anom2016 <- ngoa_aug2016-ngoa_mean_sst
+x4 <- ggplot()+
+  geom_spatraster(data=ngoa_anom2016)+
+  geom_sf(data=zones |> filter(Name=="NGOA"),fill=NA)+
+  labs(title="NGOA August SST anomaly, 2016")+
+  scale_fill_viridis(option='D',na.value=NA)
+
+cowplot::plot_grid(x1,x2,x3,x4,nrow=2)
+```
+
+Next, net primary production (carbon/m3/day) at the surface in the Russia and Western Aleutians zone.
+
+```{r}
+# August mean nppv, 1993:2013, Russia and Western Aleutians
+wal_mean_nppv <- calc_summary_r(v="nppv",year_start=1993,year_end=2013,month_start=8,month_end=8,z="RUS+WAL_15")
+ggplot()+
+  geom_spatraster(data=wal_mean_nppv)+
+  geom_sf(data=zones |> filter(zoneID=="RUS+WAL_15"),fill=NA)+
+  scale_fill_viridis(option='D',na.value=NA)
+```
+
+## Anomaly timeseries
+
+Calculate anomaly time series for all feeding grounds. We write another wrapper function that returns an anomaly time series for a given zone and variable, and a chosen baseline period.
+
+```{r}
+calc_anom_ts <- function(v,year_start,year_end,baseline_start,baseline_end,month_start,month_end,z,baseline_fun='mean'){
+  # baseline raster with function applied
+  baser <- calc_summary_r(v,baseline_start,baseline_end,month_start,month_end,z,baseline_fun)
+  
+  # time series of anomalies from the baseline
+  # WARNING: this assumes baseline_fun produced a raster that makes sense when subtracted from the raw values in these rasters (e.g., a mean)
+  rts <- calc_summary_r(v,year_start,year_end,month_start,month_end,z,fun=\(x) x)
+  
+  # difference (anomaly) stack
+  anomr <- rts-baser
+  
+  # collapse to time series
+  out <- crossing(year=year_start:year_end,
+                  month=month_start:month_end) |> 
+    mutate(anom=lapply(anomr,\(x) mean(values(x),na.rm=T)),
+           sd=lapply(anomr,\(x) sd(values(x),na.rm=T))) |>
+    mutate(across(where(is.list),as.numeric)) |> 
+    group_by(year) |> 
+    summarise(anom=mean(anom),sd=mean(sd)) |> 
+    ungroup()
+  
+  return(out)
+}
+```
+
+And here's a slightly different approach (that should be pretty equivalent). This function first calculates a mean raster across the month range within each year, then calculates a global mean/sd across all raster cells for each year.
+
+```{r}
+calc_mean_ts <- function(v,year_start,year_end,month_start,month_end,baseline_start = 1993,baseline_end = 2003,z){
+  
+  # find all the rasters to extract
+  year_range <- year_start:year_end
+  month_range <- month_start:month_end
+  slices <- crossing(y=year_range,m=month_range)
+  
+  # extract the data then combine into a stack
+  # first get a mean across months within years
+  rb <- map(year_range,\(y){
+    rs <- map(month_range,\(m) extr_yr_mth_zone(v,y,m,z,rmask=mask1k)) |> rast()
+    mean(rs)
+  })
+  rb <- rast(rb)
+  
+  ts <- global(rb, fun = c("mean","sd"), na.rm = TRUE) |> 
+    mutate(year=year_range) |> 
+    mutate(baseline=ifelse(year %in% baseline_start:baseline_end,T,F)) |> 
+    # calculate baseline mean
+    group_by(baseline) |> 
+    mutate(mean_base=mean(mean)) |> 
+    ungroup() |> 
+    mutate(anom=mean-mean_base)
+  ts
+}
+
+```
+
+
+### Tests
+
+Let's look at the same NGOA SST from before, as a time series based on different baselines.
+
+```{r}
+# Baseline 1993:2003
+ngoa_sst_ts1 <- calc_anom_ts(v="sst",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2003,month_start=6,month_end=9,z="NGOA_8",baseline_fun='mean')
+
+ngoa_sst_ts1_p <- ngoa_sst_ts1 |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="SST anomaly, NGOA\n1993 to 2003 baseline")
+
+# Baseline 1993:2013
+ngoa_sst_ts2 <- calc_anom_ts(v="sst",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=9,z="NGOA_8",baseline_fun='mean')
+
+ngoa_sst_ts2_p <- ngoa_sst_ts2 |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="SST anomaly, NGOA\n1993 to 2013 baseline")
+
+ngoa_sst_ts1_p
+ngoa_sst_ts2_p
+```
+
+NGOA chlorophyll
+
+```{r}
+ngoa_chl_ts <- calc_anom_ts(v="chlos",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=9,z="NGOA_8",baseline_fun='mean')
+
+ngoa_chl_ts_p <- ngoa_chl_ts |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="Chlorophyll anomaly, NGOA\n1993 to 2013 baseline")
+
+ngoa_chl_ts_p
+```
+
+SEA+NBC zooplankton
+
+```{r}
+sea_nlgz_ts <- calc_anom_ts(v="nlgz",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=9,z="SEA+NBC_12",baseline_fun='mean')
+
+sea_nlgz_ts_p <- sea_nlgz_ts |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="Zooplankton anomaly, SEA+NBC\n1993 to 2013 baseline")
+
+sea_nlgz_ts_p
+```
+
+With alternate calculation
+
+```{r}
+sea_nlgz_ts <- calc_mean_ts(v="nlgz",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=9,z="SEA+NBC_12")
+
+sea_nlgz_ts_p <- sea_nlgz_ts |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_hline(yintercept=0,linetype=2)+
+  labs(title="Zooplankton anomaly, SEA+NBC\n1993 to 2013 baseline")
+
+sea_nlgz_ts_p
+```
+
+
+## All Regions - Anomalies
+
+Produce time series like this for all variables.
+
+```{r}
+sst_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="sst",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_sst_p <- sst_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="SST summer anomaly, 1993 to 2013 baseline")
+all_sst_p
+```
+
+Now for phytoplankton chlorophyll.
+
+```{r}
+chl_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="chlos",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_chl_p <- chl_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="chl summer anomaly, 1993 to 2013 baseline")
+all_chl_p
+```
+
+Mixed layer depth
+
+```{r}
+mld_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="mld",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_mld_p <- mld_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="MLD summer anomaly, 1993 to 2013 baseline")
+all_mld_p
+```
+
+Nitrate
+
+```{r}
+no3_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="no3",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_no3_p <- no3_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="no3 summer anomaly, 1993 to 2013 baseline")
+all_no3_p
+```
+
+Net primary production
+
+```{r}
+nppv_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="nppv",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_nppv_p <- nppv_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="nppv summer anomaly, 1993 to 2013 baseline")
+all_nppv_p
+```
+
+Large zooplankton biomass
+
+```{r}
+nlgz_anoms <- map(fzones$zoneID,function(zone) {
+  calc_anom_ts(v="nlgz",year_start=1993,year_end=2024,baseline_start = 1993,baseline_end = 2013,month_start=6,month_end=8,z=zone,baseline_fun='mean') |> mutate(zoneID=zone)
+}) |> bind_rows()
+
+all_nlgz_p <- nlgz_anoms |> 
+  ggplot(aes(year,anom,ymax=anom+sd,ymin=anom-sd))+
+  geom_ribbon(fill='lightblue')+
+  geom_line()+
+  geom_vline(xintercept=2015,linetype=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  facet_wrap(~zoneID)+
+  labs(title="nlgz summer anomaly, 1993 to 2013 baseline")
+all_nlgz_p
+```
+
+## Save
+
+Save these anomaly timeseries
+
+```{r}
+out <- list(sst=sst_anoms,chl=chl_anoms,mld=mld_anoms,no3=no3_anoms,nppv=nppv_anoms,nlgz=nlgz_anoms)
+write_rds(out,here('data','processed covariates','mom6_anomalies_by_zone.rds'))
+```

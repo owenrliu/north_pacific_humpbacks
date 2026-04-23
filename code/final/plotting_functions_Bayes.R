@@ -13,20 +13,20 @@ theme_set(theme_minimal()+theme(panel.border = element_rect(color='black',fill=N
 
 ##-----Load----
 # Load a saved model object
-bayes <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_Bayes.rds'))
+# bayes <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_Bayes.rds'))
 # # and its ML equivalent
 # # model obj
-TMBobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_TMB.rds'))
+# TMBobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_TMB.rds'))
 # # inputs and outputs
-TMBout <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC.rds'))
+# TMBout <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC.rds'))
 
 # Load a saved model object
-# bayes <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
+bayes <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
 # # # and its ML equivalent
 # # # model obj
-# TMBobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
+TMBobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
 # # # inputs and outputs
-# TMBout <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC.rds'))
+TMBout <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC.rds'))
 
 # Load a saved model object
 # bayes <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_Bayes.rds'))
@@ -608,7 +608,8 @@ plot_mort <- function(dqlist,TMBout,type='raw'){
              lowmid=as.numeric(cmquants[2,,,]),
              median=as.numeric(cmquants[3,,,]),
              uppermid=as.numeric(cmquants[4,,,]),
-             upper=as.numeric(cmquants[5,,,]))
+             upper=as.numeric(cmquants[5,,,]))|> 
+      filter(year>1994)
     
     p <- ggplot()+
       geom_ribbon(data=cmdf,aes(x=year,ymin=low,ymax=upper,fill=breed),alpha=0.5)+
@@ -725,6 +726,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
         left_join(totcatchfdf,by=join_by(year))
       
       p <- tmdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=totcatchb,color="Catch: Breeding"))+
         geom_line(aes(y=totcatchf,color="Catch: Feeding"))+
@@ -751,6 +753,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       mBdf <- mBdf |> 
         left_join(catchbdf,by=join_by(year,zone))
       p <- mBdf |> 
+        filter(year>1994) |>  
         ggplot(aes(x=year))+
         geom_line(aes(y=catch,color="Catch: Breeding"))+
         geom_ribbon(aes(ymin=low,ymax=upper,fill="Natural"),alpha=0.5)+
@@ -777,6 +780,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       mFdf <- mFdf |> 
         left_join(catchfdf,by=join_by(year,zone))
       p <- mFdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=catch,color="Catch: Feeding"))+
         geom_ribbon(aes(ymin=low,ymax=upper,fill="Natural"),alpha=0.5)+
@@ -808,6 +812,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
         left_join(totcatchfdf,by=join_by(year))
       
       p <- tcmdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=totcumeb,color="Catch: Breeding"))+
         geom_line(aes(y=totcumef,color="Catch: Feeding"))+
@@ -834,6 +839,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
         left_join(catchbdf,by=join_by(year,zone))
       
       p <- cmBdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=cume_catch,color="Catch: Breeding"))+
         geom_ribbon(aes(ymin=low,ymax=upper,fill="Natural"),alpha=0.5)+
@@ -859,6 +865,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       cmFdf <- cmFdf |> 
         left_join(catchfdf,by=join_by(year,zone))
       p <- cmFdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=cume_catch,color="Catch: Feeding"))+
         geom_ribbon(aes(ymin=low,ymax=upper,fill="Natural"),alpha=0.5)+
@@ -946,6 +953,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
           source=="CatchB" ~ "Catch: Breeding",
           source=="CatchF" ~ "Catch: Feeding"
         )) |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year,fill=source))+
         geom_ribbon(aes(ymin=low,ymax=upper),alpha=0.5)+
         geom_ribbon(aes(ymin=lowmid,ymax=uppermid),alpha=0.7)+
@@ -973,6 +981,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       rBdf <- rBdf |> 
         bind_rows(catchbrdf)
       p <- rBdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year,fill=source))+
         geom_ribbon(aes(ymin=low,ymax=upper),alpha=0.5)+
         geom_ribbon(aes(ymin=lowmid,ymax=uppermid),alpha=0.7)+
@@ -998,6 +1007,7 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       rFdf <- rFdf |> 
         bind_rows(catchfrdf)
       p <- rFdf |> 
+        filter(year>1994) |> 
         ggplot(aes(x=year,fill=source))+
         geom_ribbon(aes(ymin=low,ymax=upper),alpha=0.5)+
         geom_ribbon(aes(ymin=lowmid,ymax=uppermid),alpha=0.7)+
@@ -1011,8 +1021,100 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
   p
 } # close fxn
 
+## Plot rmax vs. realized growth rate
+plot_r <- function(bayesobj,dqlist,TMBout=TMBout){
+  
+  yrs <- pluck(TMBout,"input","Years")
+  yrs <- yrs[-length(yrs)] #remove the last year because there's no survival calculated
+  numyr <- length(yrs)
+  bn <-pluck(TMBout,'input','BreedNames') |> as.character()
+  fn <- pluck(TMBout,'input','FeedNames') |> as.character()
+  
+  # dims: age component x breed x year x draw
+  NmatB <- pull_dq(dqlist,"NfitBreed") |> simplify2array()
+  NmatB <- NmatB[1,,,]
+  NmatTot <- apply(NmatB,c(2,3),sum)
+  Nmatlead1 <- NmatTot[-1,]
+  rmat <- Nmatlead1/NmatTot[-dim(NmatTot)[1],]-1
+  
+  quants <- apply(rmat,1,quantile,probs=c(0.025,0.25,0.50,0.75,0.975))
+  d <- tibble(year=as.integer(yrs)) |>
+    mutate(low=as.numeric(quants[1,]),
+           lowmid=as.numeric(quants[2,]),
+           median=as.numeric(quants[3,]),
+           uppermid=as.numeric(quants[4,]),
+           upper=as.numeric(quants[5,])) |> 
+    mutate(across(low:upper,\(x)x*100)) |> 
+    filter(year>1994)
+  
+  # get median estimate of rmax
+  rmax <- summary(bayesobj)$summary |> 
+    as_tibble(rownames="parameter") |> 
+    filter(parameter=="rval") |> 
+    pull(`50%`)
+  
+  p <- ggplot()+
+    geom_ribbon(data=d,aes(x=year,ymin=low,ymax=upper),fill="#238B8B",alpha=0.5)+
+    geom_ribbon(data=d,aes(x=year,ymin=lowmid,ymax=uppermid),fill="#238B8B",alpha=0.7)+
+    geom_line(data=d,aes(year,median))+
+    geom_hline(yintercept=rmax*100,linetype=2)+
+    geom_hline(yintercept=0,linetype=2,color='red')+
+    annotate("text",x=2020,y=10,label="r_max")+
+    coord_cartesian(expand = c(0,0))+
+    labs(y="Realized Annual Growth Rate (%)",x="Year")
+  
+  p
+}
+
+## Theoretical time to 99% of K
+plot_recovery_t <- function(bayesobj,dqlist,TMBout=TMBout){
+  yrs <- pluck(TMBout,"input","Years")
+  numyr <- length(yrs)
+  bn <-pluck(TMBout,'input','BreedNames') |> as.character()
+  fn <- pluck(TMBout,'input','FeedNames') |> as.character()
+  
+  # dims: age component x breed x year x draw
+  NmatB <- pull_dq(dqlist,"NfitBreed") |> simplify2array()
+  NmatB <- NmatB[1,,,]
+  NmatTot <- apply(NmatB,c(2,3),sum)
+  
+  quants <- apply(NmatTot,1,quantile,probs=c(0.025,0.25,0.50,0.75,0.975))
+  d <- tibble(year=as.integer(yrs)) |>
+    mutate(low=as.numeric(quants[1,]),
+           lowmid=as.numeric(quants[2,]),
+           median=as.numeric(quants[3,]),
+           uppermid=as.numeric(quants[4,]),
+           upper=as.numeric(quants[5,]))
+    # filter(year>1994)
+  
+  # get median estimate of rmax and K
+  rmax <- summary(bayesobj)$summary |> 
+    as_tibble(rownames="parameter") |> 
+    filter(parameter=="rval") |> 
+    pull(`50%`)
+  Ks <- summary(bayesobj)$summary |> 
+    as_tibble(rownames="parameter") |> 
+    filter(grepl("logK",parameter)) |> 
+    pull(`50%`) |> 
+    exp() |> sum()
+  thresh <- 0.99
+  dt <- d |>
+    mutate(across(low:upper,\(x){
+      # solving for time in simple logistic growth model
+      (1/rmax)*log(thresh*(1-x/Ks)/((1-thresh)*(x/Ks))) 
+    }))
+  p <- ggplot()+
+    geom_ribbon(data=dt,aes(x=year,ymin=year+low,ymax=year+upper),fill="#238B8B",alpha=0.5)+
+    geom_ribbon(data=dt,aes(x=year,ymin=year+lowmid,ymax=year+uppermid),fill="#238B8B",alpha=0.7)+
+    geom_line(data=dt,aes(year,year+median))+
+    coord_cartesian(expand = c(0,0))+
+    labs(y="Projected Recovery Year (0.99 K)",x="Year")
+  
+  p
+}
+
 ##----## Environmental Index ##----
-plot_omegas <- function(bayesobj){
+plot_omegas <- function(bayesobj,TMBout){
   df <- summary(bayesobj)$summary |> 
     as_tibble(rownames="parameter")
   # split into -1:1 scale and larger
@@ -1071,6 +1173,7 @@ plot_envIndex <- function(dqlist,TMBout){
     geom_ribbon(aes(year,median,ymin=lowmid,ymax=uppermid),fill="#2B7BBA",alpha=0.7)+
     geom_line(aes(year,median))+
     geom_hline(yintercept=0,linetype=2)+
+    scale_y_reverse()+
     labs(x="Year",y="Environmental Index",title="Index of Survival")+
     facet_wrap(~zone)+
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
@@ -1221,6 +1324,7 @@ plot_epsEnv <- function(bayesobj,TMBout){
     geom_ribbon(aes(year,median,ymin=lowmid,ymax=uppermid),fill="#238B8B",alpha=0.7)+
     geom_line(aes(year,median))+
     geom_hline(yintercept=0,linetype=2)+
+    scale_y_reverse()+
     labs(x="Year",y="Epsilon",title="Unexplained Variability")+
     facet_wrap(~zone)+
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
@@ -1266,7 +1370,7 @@ plot_Kdev <- function(bayesobj,TMBout){
 
 # plot a panel of 4 of these environmental index plots
 plot_env_panel <- function(bayesobj,TMBout,dqlist){
-  p1 <- plot_omegas(bayesobj)
+  p1 <- plot_omegas(bayesobj,TMBout)
   p2 <- plot_envIndex(dqlist,TMBout)
   p3 <- plot_epsEnv(bayesobj,TMBout)
   p4 <- plot_envIndex_surv(dqlist,TMBout)
@@ -1338,6 +1442,9 @@ make_all_Bayes_plots <- function(subdir,mtype="rS"){
   #environmental index
   if(mtype=="env-survival"){
     penv <- plot_env_panel(bayes,TMBout,dq) 
+    # realized growth rate and time to recovery
+    prmax <- plot_r(bayes,dq,TMBout)
+    precov <- plot_recovery_t(bayes,dq,TMBout)
   }
   if(mtype=="env-K"){
     penv <- plot_BH_panel(bayes,TMBout,dq) 
@@ -1373,6 +1480,10 @@ make_all_Bayes_plots <- function(subdir,mtype="rS"){
   if(mtype=="rS"){
     ggsave(paste0(fdir,"/Bayes feed SFdevs.png"),pSFdev,w=10,h=8)
   }
+  if(mtype=="env-survival"){
+    ggsave(paste0(fdir,"/Bayes growth rate.png"),prmax,w=10,h=8)
+    ggsave(paste0(fdir,"/Bayes recovery time.png"),precov,w=10,h=8)
+  }
   toc()
   message(paste("Plots finished and saved in ",fdir))
 }
@@ -1384,19 +1495,23 @@ envSobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'
 envKobj <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_Bayes.rds'))
 ddobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_Bayes.rds'))
 
+MOM6envSobj <- read_rds(here('Diags','final','env-survival test','B2F1BC_Bayes.rds'))
+
 # compare survival "uncertainty" (variance terms)
-compare_sigmas <- function(rSobj,envKobj,envSobj){
+compare_sigmas <- function(rSobj,envKobj,envSobj,MOM6envSobj){
   SFs <- extract(rSobj,pars=c("log_SFsigma")) |> unlist() |> exp()
   Ks <- extract(envKobj,pars=c("log_Ksigma")) |> unlist() |> exp()
   eps <- extract(envSobj,pars=c("log_sigmaEnv")) |> unlist() |> exp()
-  df <- tibble(random=SFs,envK=Ks,envS=eps) |> 
+  epsm <- extract(MOM6envSobj,pars=c("log_sigmaEnv")) |> unlist() |> exp()
+  df <- tibble(random=SFs,envK=Ks,envS=eps,mom6=epsm) |> 
     pivot_longer(everything(),names_to="type",values_to="value")
   p <- df |> 
     ggplot(aes(value,fill=type,color=type))+
     geom_density(alpha=0.5)+
-    scale_fill_manual(values=c("#756BB1","#238B8B","#E6781E"))+
-    scale_color_manual(values=c("#756BB1","#238B8B","#E6781E"))+
+    scale_fill_manual(values=c("#756BB1","#238B8B","#E6781E","#35B779FF"))+
+    scale_color_manual(values=c("#756BB1","#238B8B","#E6781E","#35B779FF"))+
     labs(fill="Model",color="Model",x="Value",y="Density")
+  p
 }
 
 compare_r <- function(rSobj,envKobj,envSobj,ddobj){
@@ -1556,3 +1671,11 @@ psfvar <- sfvar |>
   facet_wrap(~feed)
 psfvar
 # this seems an interesting way to compare to the other models
+
+
+## Manual loo
+library(rstan)
+library(loo)
+test <- loo(envSobj,pars = "log_sigmaEnv")
+test2 <- loo(MOM6envSobj,pars = "log_sigmaEnv")
+test3 <- loo_compare(test,test2)

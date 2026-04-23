@@ -332,6 +332,15 @@ ReadMixingData <- function(Code, DatFile, Yr1, Yr2, Nbreed, Nfeed, BreedNames, F
 # =================================Environmental Data=========================================
 ## type= "raw" - raw covariates
 ## type= "anom" - zone-specific anomalies, based on a 1993-2013 mean
+extract_env_var <- function(dat, var_name, FeedNames, YrStart, YrEnd, lag, vn, normalize) {
+  df <- dat[[var_name]] |> mutate(zone = str_remove_all(zoneID, "_\\d*"))
+  mat <- map(FeedNames, \(x) {
+    df |> filter(zone == x, year >= YrStart - lag, year <= YrEnd - lag) |> pull(vn) |> as.numeric()
+  }) |> do.call(rbind, args = _)
+  if (normalize) mat <- (mat - mean(mat)) / sd(mat)
+  mat
+}
+
 ReadGLORYS <- function(DatFile, FeedingOpt, YrStart = 2000, YrEnd = 2024, type,lag, normalize) {
   # Do you want to make raw values or anomalies?
   vn <- ""
@@ -349,65 +358,11 @@ ReadGLORYS <- function(DatFile, FeedingOpt, YrStart = 2000, YrEnd = 2024, type,l
   Nfeed <- as.numeric(DatFile[which_feed, 3])
   FeedNames <- as.character(DatFile[which_feed + 1, 1:Nfeed])
   
-  # get SST
-  sst <- envdat$sst |>
-    mutate(zone = str_remove_all(zoneID, "_\\d*"))
-  sstL <- map(FeedNames, \(x){
-    ssti <- sst |>
-      filter(zone == x, year >= (YrStart-lag), year <= (YrEnd-lag)) |>
-      pull(vn)
-    as.numeric(ssti)
-  })
-  sstMat <- do.call(rbind, sstL)
-  if (normalize == T) sstMat <- (sstMat - mean(sstMat)) / sd(sstMat)
-  
-  # Get chlorophyll
-  chl <- envdat$chl |>
-    mutate(zone = str_remove_all(zoneID, "_\\d*"))
-  chlL <- map(FeedNames, \(x){
-    chli <- chl |>
-      filter(zone == x, year >= (YrStart-lag), year <= (YrEnd-lag)) |> 
-      pull(vn)
-    as.numeric(chli)
-  })
-  chlMat <- do.call(rbind, chlL)
-  if (normalize == T) chlMat <- (chlMat - mean(chlMat)) / sd(chlMat)
-  
-  # Get mixed layer depth
-  mld <- envdat$mld |>
-    mutate(zone = str_remove_all(zoneID, "_\\d*"))
-  mldL <- map(FeedNames, \(x){
-    mldi <- mld |>
-      filter(zone == x, year >= (YrStart-lag), year <= (YrEnd-lag)) |>
-      pull(vn)
-    as.numeric(mldi)
-  })
-  mldMat <- do.call(rbind, mldL)
-  if (normalize == T) mldMat <- (mldMat - mean(mldMat)) / sd(mldMat)
-  
-  # Get no3
-  no3 <- envdat$no3 |>
-    mutate(zone = str_remove_all(zoneID, "_\\d*"))
-  no3L <- map(FeedNames, \(x){
-    no3i <- no3 |>
-      filter(zone == x, year >= (YrStart-lag), year <= (YrEnd-lag)) |>
-      pull(vn)
-    as.numeric(no3i)
-  })
-  no3Mat <- do.call(rbind, no3L)
-  if (normalize == T) no3Mat <- (no3Mat - mean(no3Mat)) / sd(no3Mat)
-  
-  # Get nppv
-  nppv <- envdat$nppv |>
-    mutate(zone = str_remove_all(zoneID, "_\\d*"))
-  nppvL <- map(FeedNames, \(x){
-    nppvi <- nppv |>
-      filter(zone == x, year >= (YrStart-lag), year <= (YrEnd-lag)) |>
-      pull(vn)
-    as.numeric(nppvi)
-  })
-  nppvMat <- do.call(rbind, nppvL)
-  if (normalize == T) nppvMat <- (nppvMat - mean(nppvMat)) / sd(nppvMat)
+  sstMat <- extract_env_var(envdat,"sst",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  chlMat <- extract_env_var(envdat,"chl",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  mldMat <- extract_env_var(envdat,"mld",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  no3Mat <- extract_env_var(envdat,"no3",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  nppvMat <- extract_env_var(envdat,"nppv",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
   
   Outs <- list(
     sst = sstMat,
@@ -415,6 +370,43 @@ ReadGLORYS <- function(DatFile, FeedingOpt, YrStart = 2000, YrEnd = 2024, type,l
     mld=mldMat,
     no3=no3Mat,
     nppv=nppvMat
+  )
+  Outs
+}
+
+ReadMOM6 <- function(DatFile, FeedingOpt, YrStart = 2000, YrEnd = 2024,type,lag, normalize) {
+  # Do you want to make raw values or anomalies?
+  vn <- ""
+  if (type == "raw") {
+    vn <- "value"
+    envdat <- read_rds(here("data", "processed covariates", "mom6_covars_by_zone.rds"))
+  }
+  if (type == "anom") {
+    vn <- "anom"
+    envdat <- read_rds(here("data", "processed covariates", "mom6_anomalies_by_zone.rds"))
+  }
+  
+  # pull the right timeseries for feeding grounds
+  which_feed <- which(DatFile[, 1] == "Feeding_grounds" & DatFile[, 2] == FeedingOpt)
+  Nfeed <- as.numeric(DatFile[which_feed, 3])
+  FeedNames <- as.character(DatFile[which_feed + 1, 1:Nfeed])
+  
+  # out <- list(sst=sst_anoms,chl=chl_anoms,mld=mld_anoms,no3=no3_anoms,nppv=nppv_anoms,nlgz=nlgz_anoms)
+  
+  sstMat <- extract_env_var(envdat,"sst",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  chlMat <- extract_env_var(envdat,"chl",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  mldMat <- extract_env_var(envdat,"mld",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  no3Mat <- extract_env_var(envdat,"no3",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  nppvMat <- extract_env_var(envdat,"nppv",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  nlgzMat <- extract_env_var(envdat,"nlgz",FeedNames,YrStart,YrEnd,lag,vn,normalize=normalize)
+  
+  Outs <- list(
+    sst = sstMat,
+    chl = chlMat,
+    mld=mldMat,
+    no3=no3Mat,
+    nppv=nppvMat,
+    nlgz=nlgzMat
   )
   Outs
 }
@@ -489,7 +481,6 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   # Set up mixing parameters
   NmixPar <- sum(MixI > 0)
   # Mixing parameters
-  MixPars <- rep(-1,NmixPar)
   MixPars <- NULL
   for (Ibreed in 1:Nbreed)
   {
@@ -538,6 +529,7 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   # The form and inclusion of these will differ based on option "envOpt"
   # list with sst and chl anomalies by year (YrSDevs to Yr2)
   OutsEnv <- ReadGLORYS(DatFile, FeedingOpt, YrStart = YrSDevs, YrEnd = 2023,lag=envlag,type = "anom", normalize = T)
+  # OutsEnv <- ReadMOM6(DatFile, FeedingOpt, YrStart = YrSDevs, YrEnd = 2023,lag=envlag,type = "anom", normalize = T)
   
   nomegas <- sum(SF) # number of coefficients to estimate for each environmental covariate
   
@@ -754,7 +746,6 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
     Nmirror = Nmirror,
     Mirror = Mirror,
     WghtTotal = WghtTotal,
-    Idirichlet = Idirichlet,
     Nage = Nage,
     map = mapUse,
     envVars=envVars,
