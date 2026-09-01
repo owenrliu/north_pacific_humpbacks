@@ -1,0 +1,267 @@
+Year1,Year2,VarCo,Estimate,CV,Area,abs/rel,Use,Add CV,Hypothesis,Index,Exclude,Component,Reference,Reviewed by ASI?
+2002,2002,1,16875,0.165093612,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2003,2003,1,19065,0.089263265,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2004,2004,1,19340,0.072297801,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2005,2005,1,21063,0.039984014,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2006,2006,1,21095,0.075697659,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2007,2007,1,24915,0.080437572,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2008,2008,1,26456,0.098305401,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2009,2009,1,26455,0.100951669,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2010,2010,1,23007,0.105570883,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2011,2011,1,29636,0.104315019,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2012,2012,1,33488,0.112164278,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2013,2013,1,31701,0.104510745,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2014,2014,1,31243,0.095147257,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2015,2015,1,33260,0.104092715,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2016,2016,1,29852,0.098255144,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2017,2017,1,28429,0.100628339,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2018,2018,1,26731,0.088665383,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2019,2019,1,25671,0.079730589,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2020,2020,1,28706,0.087599409,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+2021,2021,1,26662,0.081742567,Total,Abs,Yes,No,All,1,No,0,Cheeseman et al 2024,Yes
+1990,1993,-1,391,0.179,Asia,Abs,Yes,No,All,2,No,1,Calambokidis et al. 1997,Yes
+2004,2006,-1,1110,0.09,Asia,Abs,Yes,No,B1F1,2,S1,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,1114,0.09,Asia,Abs,Yes,No,B1F2,2,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1107,0.09,Asia,Abs,Yes,No,B2F1,2,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1112,0.09,Asia,Abs,Yes,No,B2F2,2,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1907,0.17,Asia,Abs,S1,No,All,2,No,1,Wade et al. SC/68D/IA3,No
+1980,1983,-1,1407,0.1,Hawaii,Abs,Yes,No,All,3,No,1,Baker and Herman 1987,Yes
+1991,1993,-1,4000,0.08,Hawaii,Abs,Yes,No,All,3,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+2004,2006,-1,7658,0.06,Hawaii,Abs,No?,No,All,3,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+2004,2006,-1,11501,0.04,Hawaii,Abs,Yes,No,B1F1,3,S1,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,11540,0.04,Hawaii,Abs,Yes,No,B1F2,3,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,11998,0.04,Hawaii,Abs,Yes,No,B2F1,3,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,12021,0.04,Hawaii,Abs,Yes,No,B2F2,3,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,9920,0.09,Hawaii,Abs,S1,No,All,3,No,1,Wade et al. SC/68D/IA3,No
+1987,1990,-1,571,0.114703144,MX_AR,Abs,Yes,No,B2 only,4,No,1,Martinez et al 2017,Yes
+2003,2006,-1,2352,0.078550832,MX_AR,Abs,Yes,No,B2 only,4,No,1,Martinez et al 2017,Yes
+2004,2006,-1,788,0.09,MX_AR,Abs,Yes,No,B2F1-no,4,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,781,0.09,MX_AR,Abs,Yes,No,B2F2-no,4,No,1,Wade et al. SC/68d/IA03,No
+1987,1990,-1,1642,0.204507527,MX_ML,Abs,Yes,No,B2 only,5,No,1,Martinez et al 2017,Yes
+2003,2006,-1,4149,0.093428714,MX_ML,Abs,Yes,No,B2 only,5,No,1,Martinez et al 2017,Yes
+2004,2006,-1,891,0.14,MX_ML,Abs,Yes,No,B2F1-no,5,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,804,0.15,MX_ML,Abs,Yes,No,B2F2-no,5,No,1,Wade et al. SC/68d/IA03,No
+1987,1990,-1,1964,0.106580541,Mexico,Abs,No,No,B1 only,6,No,1,Martinez et al 2017,Yes
+2003,2006,-1,8168,0.054576527,Mexico,Abs,No,No,B1 only,6,No,1,Martinez et al 2017,Yes
+2004,2006,-1,2943,0.07,Mexico,Abs,No,No,B1F1,6,No,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,2821,0.08,Mexico,Abs,No,No,B1F2,6,No,1,Wade et al. SC/68d/IA03,No
+1987,1990,-1,1628,0.06,Mexico,No,No,No,All,6,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+2003,2006,-1,5007,0.03,Mexico,No,No,No,All,6,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+2004,2006,-1,750,0.24,Central_Am,Abs,Yes,No,B1F1,7,S1,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,857,0.27,Central_Am,Abs,Yes,No,B1F2,7,S1,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,1269,0.2,Central_Am,Abs,Yes,No,B2F1,7,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1356,0.2,Central_Am,Abs,Yes,No,B2F2,7,S1,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,563,0.38,Central_Am,Abs,S1,No,All,7,No,1,Wade et al. SC/68D/IA3,No
+2019,2021,-1,1496,0.171,Central_Am,Abs,Yes,No,All,7,No,1,Curtis et al. 2022,Yes
+2004,2006,-1,1382,0.23,RUS+WAL,Abs,Yes,No,B1F1,8,No,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,1399,0.23,RUS+WAL,Abs,Yes,No,B1F2,8,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1392,0.23,RUS+WAL,Abs,Yes,No,B2F1,8,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1408,0.23,RUS+WAL,Abs,Yes,No,B2F2,8,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,7947,0.21,EAL+BER,Abs,Yes,No,B1F1,9,No,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,5983,0.15,EAL+BER+WGOA,Abs,Yes,No,B1F2,9,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,6529,0.22,EAL+BER,Abs,Yes,No,B2F1,9,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,5241,0.13,EAL+BER+WGOA,Abs,Yes,No,B2F2,9,No,1,Wade et al. SC/68d/IA03,No
+1987,1987,-1,830,0.31,GOA,Abs,Yes,No,F1 only,10,No,0,zerbini et al 2006,Yes
+2001,2001,-1,2191,0.34,GOA,Abs,Yes,No,F1 only,10,No,0,zerbini et al 2006,Yes
+2002,2002,-1,2137,0.24,GOA,Abs,Yes,No,F1 only,10,No,0,zerbini et al 2006,Yes
+2003,2003,-1,2425,0.14,GOA,Abs,Yes,No,F1 only,10,No,0,zerbini et al 2006,Yes
+2004,2006,-1,2140,0.08,GOA,Abs,Yes,No,B1F1,10,No,0,Wade et al. SC/68d/IA03,No
+2004,2006,-1,2055,0.08,GOA,Abs,Yes,No,B2F1,10,No,0,Wade et al. SC/68d/IA03,No
+1987,1987,-1,616,0.367955058,NGOA,Abs,Yes,No,F2 only,11,No,0,zerbini et al 2006 paul,Yes
+2001,2001,-1,1701,0.41211433,NGOA,Abs,Yes,No,F2 only,11,No,0,zerbini et al 2006 paul,Yes
+2002,2002,-1,1544,0.265186145,NGOA,Abs,Yes,No,F2 only,11,No,0,zerbini et al 2006 paul,Yes
+2003,2003,-1,1931,0.119564544,NGOA,Abs,Yes,No,F2 only,11,No,0,zerbini et al 2006 paul,Yes
+2004,2006,-1,1747,0.1,NGOA,Abs,Yes,No,B1F2,11,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,1650,0.1,NGOA,Abs,Yes,No,B2F2,11,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,5925,0.07,SEA+NBC,Abs,Yes,No,B1F1,12,No,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,5828,0.07,SEA+NBC,Abs,Yes,No,B1F2,12,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,6187,0.07,SEA+NBC,Abs,Yes,No,B2F1,12,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,6038,0.07,SEA+NBC,Abs,Yes,No,B2F2,12,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,364,0.25,SBC+WA,Abs,No,No,B1F1,13,No,1,Wade et al. SC/68d/IA03,Yes
+2004,2006,-1,366,0.27,SBC+WA,Abs,No,No,B1F2,13,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,328,0.25,SBC+WA,Abs,No,No,B2F1,13,No,1,Wade et al. SC/68d/IA03,No
+2004,2006,-1,355,0.31,SBC+WA,Abs,No,No,B2F2,13,No,1,Wade et al. SC/68d/IA03,No
+1997,1997,-1,131,0.184045802,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+1998,1998,-1,181,0.165966851,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+1999,1999,-1,243,0.1718107,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2000,2000,-1,255,0.168627451,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2001,2001,-1,305,0.166590164,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2002,2002,-1,362,0.179668508,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2003,2003,-1,439,0.2238041,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2004,2004,-1,608,0.187878289,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2005,2005,-1,810,0.138469136,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2006,2006,-1,671,0.112503726,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2007,2007,-1,1040,0.101269231,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2008,2008,-1,1239,0.101977401,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2009,2009,-1,1245,0.103518072,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2010,2010,-1,1186,0.097681282,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2011,2011,-1,1279,0.114652072,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2012,2012,-1,1560,0.111717949,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2013,2013,-1,1887,0.124843667,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2014,2014,-1,1556,0.125475578,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2015,2015,-1,1586,0.123032787,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2016,2016,-1,1416,0.110225989,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2017,2017,-1,1369,0.080277575,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2018,2018,-1,1671,0.059269898,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2019,2019,-1,1797,0.04588759,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2020,2020,-1,1924,0.043778586,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2021,2021,-1,2162,0.043348751,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2022,2022,-1,2328,0.041189863,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+2023,2023,-1,2323,0.041876883,SBC+WA,Abs,Yes,1,All,14,No,1,Calambokidis and Barlow 2024,Yes
+1989,1989,-1,506,0.080237154,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1990,1990,-1,517,0.070793037,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1991,1991,-1,636,0.066666667,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1992,1992,-1,766,0.059399478,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1993,1993,-1,800,0.04925,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1994,1994,-1,830,0.045421687,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1995,1995,-1,834,0.043764988,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1996,1996,-1,922,0.051843818,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1997,1997,-1,974,0.054312115,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1998,1998,-1,1068,0.050280899,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1999,1999,-1,1263,0.05391924,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2000,2000,-1,1166,0.056089194,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2001,2001,-1,1220,0.057786885,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2002,2002,-1,1277,0.064604542,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2003,2003,-1,1566,0.067879949,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2004,2004,-1,1617,0.063450835,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2005,2005,-1,1897,0.063837638,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2006,2006,-1,2005,0.066733167,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2007,2007,-1,1847,0.074011911,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2008,2008,-1,2161,0.073253124,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2009,2009,-1,2154,0.069545032,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2010,2010,-1,2335,0.06235546,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2011,2011,-1,2491,0.057647531,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2012,2012,-1,2313,0.052399481,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2013,2013,-1,2358,0.049575912,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2014,2014,-1,2243,0.045786893,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2015,2015,-1,2687,0.044957201,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2016,2016,-1,4213,0.044410159,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2017,2017,-1,4649,0.038459884,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2018,2018,-1,5367,0.032737097,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2019,2019,-1,5456,0.030150293,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2020,2020,-1,5204,0.030572636,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2021,2021,-1,5568,0.031788793,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2022,2022,-1,5420,0.031383764,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+2023,2023,-1,5650,0.02840708,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2024,Yes
+1991,1994,-1,639,0.01,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+2003,2006,-1,1554,0.04,OR+CA,Abs,Yes,2,All,15,No,1,Calambokidis and Barlow 2017 A17/NP10,Yes
+1996,1996,-1,1181,0.319,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2001,2001,-1,1364,0.294,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2005,2005,-1,1575,0.305,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2008,2008,-1,1727,0.333,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2014,2014,-1,2178,0.392,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2018,2018,-1,4784,0.307,OR+CA,Abs,No,No,All,16,No,0,Becker et al. 2020,Yes
+2002,2002,2,10631,0.249271,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2003,2003,2,10309,0.096614609,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2004,2004,2,9853,0.054196691,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2005,2005,2,10625,0.0656,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2006,2006,2,11927,0.059193427,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2007,2007,2,14314,0.078734106,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2008,2008,2,14312,0.103339855,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2009,2009,2,16275,0.082211982,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2010,2010,2,13309,0.127958524,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2011,2011,2,14888,0.153882321,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2012,2012,2,18275,0.140738714,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2013,2013,2,18728,0.102199915,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2014,2014,2,16597,0.112791468,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2015,2015,2,14395,0.083570684,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2016,2016,2,13327,0.073985143,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2017,2017,2,12647,0.084605045,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2018,2018,2,12167,0.059998356,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2019,2019,2,12094,0.04861915,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2020,2020,2,12999,0.043541811,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2021,2021,2,12294,0.040019522,Hawaii,Rel,Yes,No,All,17,No,1,Cheeseman et al 2024,Yes
+2002,2002,3,2990,0.122742475,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2003,2003,3,3003,0.099234099,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2004,2004,3,3457,0.091408736,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2005,2005,3,4154,0.120847376,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2006,2006,3,3515,0.138549075,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2007,2007,3,3971,0.108285067,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2008,2008,3,4088,0.112279843,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2009,2009,3,4627,0.088826453,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2010,2010,3,4798,0.111713214,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2011,2011,3,5440,0.092279412,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2012,2012,3,5596,0.080950679,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2013,2013,3,5534,0.086375136,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2014,2014,3,6682,0.091589345,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2015,2015,3,7313,0.068371393,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2016,2016,3,7296,0.066337719,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2017,2017,3,6885,0.058678286,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2018,2018,3,6885,0.048946986,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2019,2019,3,6879,0.064544265,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2020,2020,3,7042,0.067026413,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+2021,2021,3,8281,0.049993962,MX_ML,Rel,Yes,No,All,18,No,1,Cheeseman et al 2024,Yes
+1993,1993,-1,2754,0.13449658,Hawaii,Rel,Yes,No,All,19,No,0,Mobley et al. 2001,No
+1995,1995,-1,3776,0.116993426,Hawaii,Rel,Yes,No,All,19,No,0,Mobley et al. 2001,No
+1998,1998,-1,4358,0.131202905,Hawaii,Rel,Yes,No,All,19,No,0,Mobley et al. 2001,No
+2000,2000,-1,4491,0.157631078,Hawaii,Rel,Yes,No,All,19,No,0,Mobley et al. 2001,No
+1987,1987,-1,214,0.539778019,EAL+BER+WGOA,Rel,Yes,No,F2 only,20,No,0,zerbini et al 2006 paul,No
+2001,2001,-1,490,0.42153719,EAL+BER+WGOA,Rel,Yes,No,F2 only,20,No,0,zerbini et al 2006 paul,No
+2002,2002,-1,593,0.464823119,EAL+BER+WGOA,Rel,Yes,No,F2 only,20,No,0,zerbini et al 2006 paul,No
+2003,2003,-1,494,0.421211327,EAL+BER+WGOA,Rel,Yes,No,F2 only,20,No,0,zerbini et al 2006 paul,No
+1985,1985,-1,50.1395381,0.216342342,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1986,1986,-1,58.21680638,0.343683532,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1987,1987,-1,74.95389323,0.115894812,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1988,1988,-1,63.72382621,0.214499616,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1989,1989,-1,46.20481676,0.041919649,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1990,1990,-1,55.83831565,0.230495913,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1991,1991,-1,61.65696924,0.031822629,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1992,1992,-1,73.03650926,0.273073776,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1993,1993,-1,53.44424654,0.144478097,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1994,1994,-1,69.82775328,0.112920712,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1995,1995,-1,69.71931572,0.071941331,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1996,1996,-1,95.4770008,0.2036956,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1997,1997,-1,95.29151779,0.032287883,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1998,1998,-1,109.7413198,0.076186557,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+1999,1999,-1,131.3888737,0.1211946,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2000,2000,-1,106.409582,0.123516925,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2001,2001,-1,122.8894887,0.040335335,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2002,2002,-1,103.3483273,0.207279954,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2003,2003,-1,141.9787727,0.16399707,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2004,2004,-1,165.2828784,0.124543797,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2005,2005,-1,174.6409432,0.038650057,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2006,2006,-1,170.370714,0.107157242,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2007,2007,-1,198.0921909,0.059706973,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2008,2008,-1,183.5165625,0.047215196,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2009,2009,-1,220.3938768,0.022612473,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2010,2010,-1,225.3602833,0.04255564,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2011,2011,-1,271.3377718,0.061803335,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2012,2012,-1,246.1120703,0.016497114,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2013,2013,-1,305.3069753,0.097437163,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2014,2014,-1,230.3367048,0.112119218,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2015,2015,-1,190.1923647,0.02974455,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2016,2016,-1,188.4779579,0.030942688,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2017,2017,-1,152.6610135,0.041798549,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2018,2018,-1,128.6943626,0.232341368,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2019,2019,-1,163.9377016,0.041108596,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2020,2020,-1,169.1446786,0.016337923,SEA+NBC,Rel,Yes,Maybe,All,21,No,0,Gabriel et al. 2022,No
+2011,2012,-1,6247,0.4,GOA,Abs,No,No,F1 only,22,No,0,Matsuoka et al. 2023,Not reviewed
+2011,2012,-1,4506,0.62,NGOA,Abs,No,No,F2 only,22,No,0,Matsuoka et al. 2023,Not reviewed
+2017,2018,-1,10949,0.38,EAL+BER,Abs,No,No,F1 only,22,No,0,Matsuoka et al. 2023,Not reviewed
+2017,2018,-1,12424,0.34,EAL+BER+WGOA,Abs,No,No,F2 only,22,No,0,Matsuoka et al. 2023,Not reviewed
+2002,2002,-1,231,0.63,EAL+BER,Rel,Yes,No,F1 only,23,No,0,Friday et al. 2012,No
+2008,2008,-1,436,0.45,EAL+BER,Rel,Yes,No,F1 only,23,No,0,Friday et al. 2012,No
+2010,2010,-1,675,0.8,EAL+BER,Rel,Yes,No,F1 only,23,No,0,Friday et al. 2012,No
+2002,2002,-1,231,0.63,EAL+BER+WGOA,Rel,Yes,No,F2 only,23,No,0,Friday et al. 2012,No
+2008,2008,-1,436,0.45,EAL+BER+WGOA,Rel,Yes,No,F2 only,23,No,0,Friday et al. 2012,No
+2010,2010,-1,675,0.8,EAL+BER+WGOA,Rel,Yes,No,F2 only,23,No,0,Friday et al. 2012,No
+2007,2007,-1,135,0.081,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2008,2008,-1,200,0.065,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2011,2011,-1,170,0.088,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2012,2012,-1,230,0.074,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2013,2013,-1,178,0.084,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2014,2014,-1,264,0.083,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2015,2015,-1,160,0.256,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2017,2017,-1,104,0.202,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2018,2018,-1,103,0.282,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2019,2019,-1,108,0.259,GOA,Rel,Yes,3,F1 only,24,No,1,Moran et al. 2023,No
+2007,2007,-1,135,0.081,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2008,2008,-1,200,0.065,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2011,2011,-1,170,0.088,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2012,2012,-1,230,0.074,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2013,2013,-1,178,0.084,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2014,2014,-1,264,0.083,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2015,2015,-1,160,0.256,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2017,2017,-1,104,0.202,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2018,2018,-1,103,0.282,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No
+2019,2019,-1,108,0.259,NGOA,Rel,Yes,3,F2 only,24,No,1,Moran et al. 2023,No

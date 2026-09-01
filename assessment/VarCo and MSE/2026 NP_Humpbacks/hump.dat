@@ -1,0 +1,94 @@
+# Areas andmixing grounds
+# =======================
+
+Breeding_grounds B1 4
+Asia Hawaii Mexico Central_Am
+Breeding_grounds B2 5
+Asia Hawaii MX_AR MX_ML Central_Am
+Feeding_grounds F1 6
+RUS+WAL EAL+BER GOA SEA+NBC SBC+WA OR+CA
+Feeding_grounds F2 6
+RUS+WAL EAL+BER+WGOA NGOA SEA+NBC SBC+WA OR+CA
+
+Mixing_matrix B1F1
+#   RUS+WAL     EAL+BER   GOA   SEA+NBC    SBC+WA  OR+CA
+         -1           1     0         0         0      0  # Asia
+          1           1     1        -1         1      0  # Hawaii
+          1          -1     1         1         1      1  # Mexico
+          0           0     0         0         1     -1  # Central AM
+
+Mixing_matrix B1F2
+#   RUS+WAL     EAL+BER+WGOA   NGOA   SEA+NBC    SBC+WA  OR+CA
+         -1           1           0         0         0      0  # Asia
+          1           1           1        -1         1      0  # Hawaii
+          1          -1           1         1         1      1  # Mexico
+          0           0           0         0         1     -1  # Central AM
+
+Mixing_matrix B2F1
+#   RUS+WAL     EAL+BER   GOA   SEA/NBC    SBC+WA  OR+CA
+         -1           1     0         0         0      0  # Asia
+          1           1     1        -1         1      0  # Hawaii
+          1          -1     1         1         1      1  # MX_AR
+          1          -1     1         1         1      1  # MX_ML
+          0           0     0         0         1     -1  # Central AM
+
+Mixing_matrix B2F2
+#   RUS+WAL     EAL+BER+WGOA   NGOA   SEA+NBC    SBC+WA  OR+CA
+         -1           1           0         0         0      0  # Asia
+          1           1           1        -1         1      0  # Hawaii
+          1          -1           1         1         1      1  # MX_AR
+          1          -1           1         1         1      1  # MX_ML
+          0           0           0         0         1     -1  # Central AM
+
+
+# Catch suff
+# ===========
+First_year_with_catches: 1965
+Low_Base_High: B
+
+Total_areas_in_catch_files: 13
+Columns_with_breeding_gound_catches: B1
+Asia Hawaii Mexico MX_AR MX_ML Central_AM RUS+WAL EAL+BER WGOA NGOA SEA+NBC SBC+WA OR+CA
+   1      0      0     0     0          0       0       0    0    0       0      0     0 # Asia
+   0      1      0     0     0          0       0       0    0    0       0      0     0 # Hawaii
+   0      0      1     0     0          0       0       0    0    0       0      0     0 # Mexico
+   0      0      0     0     0          1       0       0    0    0       0      0     0 # Central America
+Columns_with_breeding_gound_catches: B2
+Asia Hawaii Mexico MX_AR MX_ML Central_AM RUS+WAL EAL+BER WGOA NGOA SEA+NBC SBC+WA OR+CA
+   1      0      0     0     0          0       0       0    0    0       0      0     0 # Asia
+   0      1      0     0     0          0       0       0    0    0       0      0     0 # Hawaii
+   0      0      0     1     0          0       0       0    0    0       0      0     0 # MX_AR
+   0      0      0     0     1          0       0       0    0    0       0      0     0 # MX_ML
+   0      0      0     0     0          1       0       0    0    0       0      0     0 # Central America
+Columns_with_feeding_gound_catches: F1
+Asia Hawaii Mexico MX_AR MX_ML Central_AM RUS+WAL EAL+BER WGOA NGOA SEA+NBC SBC+WA OR+CA
+   0      0      0     0     0          0       1       0    0    0       0      0     0 # RUS_WAL
+   0      0      0     0     0          0       0       1    0    0       0      0     0 # EAL+BER
+   0      0      0     0     0          0       0       0    1    1       0      0     0 # GOA
+   0      0      0     0     0          0       0       0    0    0       1      0     0 # SEA+NBC
+   0      0      0     0     0          0       0       0    0    0       0      1     0 # SBC+WA
+   0      0      0     0     0          0       0       0    0    0       0      0     1 # OR+CA
+Columns_with_feeding_gound_catches: F2
+Asia Hawaii Mexico MX_AR MX_ML Central_AM RUS+WAL EAL+BER WGOA NGOA SEA+NBC SBC+WA OR+CA
+   0      0      0     0     0          0       1       0    0    0       0      0     0 # RUS_WAL
+   0      0      0     0     0          0       0       1    1    0       0      0     0 # EAL+BER+WGOA
+   0      0      0     0     0          0       0       0    0    1       0      0     0 # NGOA
+   0      0      0     0     0          0       0       0    0    0       1      0     0 # SEA+NBC
+   0      0      0     0     0          0       0       0    0    0       0      1     0 # SBC+WA
+   0      0      0     0     0          0       0       0    0    0       0      0     1 # OR+CA
+
+#Biological parameters
+Age_at_maturity: 8
+Adult_survival: 0.96
+Extra_time-lag: 0
+
+# Minimum_CV_for_the_mixing_data
+0.05
+# Minimum_SD_for_the_mixing_data
+0.05
+# Year_for_feeding_to_breeding (as it is dynamic)
+2005
+# Dirichlet_(1)_or_normal_(0)
+1
+ 
+        
