@@ -1,0 +1,301 @@
+# ==========================================================================================
+# Model Run Configuration Template
+# ==========================================================================================
+#
+# This YAML file defines all model runs, their parameters, and options.
+# Use this to:
+#  - Document which configurations have been tested
+#  - Easily reproduce past runs
+#  - Batch run multiple configurations
+#  - Track sensitivity analyses
+#
+# To run: source("run_from_config.R"); run_config("runs.yaml")
+# To run specific runs: run_config("runs.yaml", runs = c("baseline", "sensitivity_1",...))
+# ==========================================================================================
+
+# ==========================================================================================
+# DEFAULTS: Applied to all runs unless overridden
+# ==========================================================================================
+defaults:
+  # Run metadata
+  code: "B2F1"                              # Stock code
+  sens_case: "BC"                           # Sensitivity case abbreviation
+  
+  # Data
+  data_file_name: "data/Hump.dat"           # Data file
+  bycatch_file: "BycatchActual_2024_04_24.csv" # Catch file
+  catch_series: "B"                         # "L" (landings), "B" (biomass), "H" (historical)
+  
+  # Years
+  yr1: 1970                                 # First year of analysis
+  yr2: 2023                                 # Last year of analysis
+  yr_s_devs: 2000                           # Year to start survival deviations
+  
+  # Demographic parameters
+  nage: 11                                  # Number of age classes
+  iamat: 8                                  # Age at maturity
+  stray_base: 0                             # Base straying rate
+  sa: 0.96                                  # Adult base annual survival
+  sc: 0.8                                   # Juvenile base annual survival
+  time_lag: 0                               # ?
+  with_mirror: 0                            # Mirror survival across feeding grounds?
+  
+  # Model selection
+  env_opt: "env-survival"                   # Model variant: rS, ddOnly, env-survival, env-K
+  env_vars: ["sst", "mld"]                  # Environmental variables
+  env_lag: 0                                # Lag in environmental effect
+  spline_k: 5                               # Number of spline knots for env relationships
+  
+  # Random effects
+  rvars: ["epsEnv"]                         # Which parameters to treat as random effects
+  
+  # Density dependence (if applicable)
+  dens_dep_opt: 0                           # Density dependence in recruitment: 0=unfished, 1=current
+  
+  # Parameters
+  use_k_prior: 1                            # Use informative prior on K? (0 or 1)
+  kmax: 60000                               # Prior max K (used if use_k_prior=1)
+  add_cv: true                              # Estimate additional process variance?
+  mix_weights: [1, 1]                       # Weights for mark-recapture [1] and genetics [2]
+  
+  # Numerical options
+  wght_total: 1                             # Total weight for fitting
+  idirichlet: 1                             # Dirichlet variance for mixing proportions
+  max_n: 100                                # Max iterations for optimization
+  seed: 19101                               # Random seed for reproducibility
+  sf: [0, 1, 0, 1, 1, 1]                    # Selectivity flags (0=not estimated, 1=estimated)
+  
+  # Output and diagnostics
+  all_plots: true                           # Generate all standard plots?
+  full_diag: true                           # Verbose diagnostics during fitting?
+  do_boot: false                            # Do bootstrap? (slower, rarely used)
+  do_bayes: false                           # Do Bayesian MCMC sampling?
+  
+  # Directory
+  subdir: "final/baseline"                  # Subdirectory in Diags/ and plots/
+  
+  # Advanced
+  return_model_obj: false                   # Return the fitted model object? (else return best par)
+  init: null                                # Initial parameters (usually null)
+
+
+# ==========================================================================================
+# RUNS: Specific configurations
+# ==========================================================================================
+# Each run overrides only the parameters it specifies; others use defaults.
+# 
+# Common patterns:
+#  - Model selection: change env_opt, env_vars, rvars
+#  - Sensitivity analysis: change years, data, parameters
+#  - Diagnostics: set all_plots: true, full_diag: true
+# ==========================================================================================
+
+runs:
+
+  # ====== ML MODELS ======
+  
+  - name: "ML_env_survival"
+    description: "env-survival with SST+MLD, maximum likelihood"
+    env_opt: "env-survival"
+    env_vars: ["sst", "mld"]
+    rvars: ["epsEnv"]
+    do_bayes: false
+    all_plots: true
+    subdir: "final/ml/env-survival"
+    yr2: 2023
+  
+  - name: "ML_rs"
+    description: "Random-survival model without environmental covariates, maximum likelihood"
+    env_opt: "rS"
+    rvars: null
+    do_bayes: false
+    all_plots: true
+    subdir: "final/ml/rS"
+  
+  - name: "ML_ddonly"
+    description: "Density-dependent only model (no env drivers), maximum likelihood"
+    env_opt: "ddOnly"
+    rvars: null
+    do_bayes: false
+    all_plots: true
+    subdir: "final/ml/ddOnly"
+  
+  - name: "ML_env_k"
+    description: "Varying K driven by environment, maximum likelihood"
+    env_opt: "env-K"
+    env_vars: ["sst", "mld", "no3"]
+    rvars: ["Kdev"]
+    do_bayes: false
+    all_plots: true
+    subdir: "final/ml/env-K"
+
+  # ====== SENSITIVITY: YEARS ======
+  
+  - name: "sensitivity_shorter_window"
+    description: "Shorter time series (2000-2023) to test recent data sensitivity"
+    yr1: 2000
+    yr2: 2023
+    env_opt: "env-survival"
+    all_plots: true
+    subdir: "final/sensitivity/years/2000-2023"
+  
+  - name: "sensitivity_extended_history"
+    description: "Extended historical window if available (1960-2023)"
+    yr1: 1960
+    yr2: 2023
+    env_opt: "env-survival"
+    all_plots: false
+    subdir: "final/sensitivity/years/1960-2023"
+
+  # ====== SENSITIVITY: ENVIRONMENTAL VARIABLES ======
+  
+  - name: "sensitivity_sst_only"
+    description: "SST-only survival model"
+    env_opt: "env-survival"
+    env_vars: ["sst"]
+    all_plots: true
+    subdir: "final/sensitivity/env_vars/sst_only"
+  
+  - name: "sensitivity_mld_only"
+    description: "MLD-only survival model"
+    env_opt: "env-survival"
+    env_vars: ["mld"]
+    all_plots: true
+    subdir: "final/sensitivity/env_vars/mld_only"
+  
+  - name: "sensitivity_full_env"
+    description: "All environmental variables: sst, chl, mld, no3, nppv"
+    env_opt: "env-survival"
+    env_vars: ["sst", "chl", "mld", "no3", "nppv"]
+    rvars: ["epsEnv"]
+    all_plots: false
+    subdir: "final/sensitivity/env_vars/all_vars"
+
+  # ====== SENSITIVITY: RANDOM EFFECTS ======
+  
+  # - name: "sensitivity_no_random_effects"
+  #   description: "env-survival without random environmental effects"
+  #   env_opt: "env-survival"
+  #   env_vars: ["sst", "mld"]
+  #   rvars: null
+  #   all_plots: true
+  #   subdir: "final/sensitivity/random_effects/none"
+  # 
+  # - name: "sensitivity_random_sf"
+  #   description: "env-survival with random selectivity deviations"
+  #   env_opt: "env-survival"
+  #   env_vars: ["sst", "mld"]
+  #   rvars: ["epsEnv", "epsSF"]
+  #   all_plots: true
+  #   subdir: "final/sensitivity/random_effects/with_sf"
+
+  # ====== SENSITIVITY: PRIORS AND CONSTRAINTS ======
+  
+  # - name: "sensitivity_no_k_prior"
+  #   description: "env-survival without K prior (more data-driven)"
+  #   env_opt: "env-survival"
+  #   use_k_prior: 0
+  #   all_plots: true
+  #   subdir: "final/sensitivity/priors/no_k_prior"
+  # 
+  # - name: "sensitivity_high_kmax"
+  #   description: "More liberal K prior (Kmax = 100000)"
+  #   env_opt: "env-survival"
+  #   use_k_prior: 1
+  #   kmax: 100000
+  #   all_plots: true
+  #   subdir: "final/sensitivity/priors/high_kmax"
+  # 
+  # - name: "sensitivity_no_mirror"
+  #   description: "Breeding and feeding survival estimated separately"
+  #   env_opt: "env-survival"
+  #   with_mirror: 0
+  #   all_plots: true
+  #   subdir: "final/sensitivity/structure/no_mirror"
+
+  # ====== DIAGNOSTIC RUNS ======
+  
+  # - name: "diagnostic_full_output"
+  #   description: "Full diagnostic run with verbose output and all plots"
+  #   env_opt: "env-survival"
+  #   all_plots: true
+  #   full_diag: true
+  #   subdir: "final/diagnostics/verbose"
+  # 
+  # - name: "diagnostic_quick"
+  #   description: "Quick run for testing (minimal plots, faster)"
+  #   env_opt: "rS"
+  #   all_plots: false
+  #   full_diag: false
+  #   do_bayes: false
+  #   subdir: "final/diagnostics/quick_test"
+
+  # ====== BAYESIAN RUNS (MCMC) ======
+  
+  - name: "bayes_envS"
+    description: "Full Bayesian inference for main model"
+    env_opt: "env-survival"
+    env_vars: ["sst", "mld"]
+    do_bayes: true
+    all_plots: true
+    subdir: "final/bayes/env-survival"
+    seed: 1916
+  
+  - name: "bayes_envK"
+    description: "Full Bayesian inference for env-K model"
+    env_opt: "env-K"
+    env_vars: ["sst", "mld", "no3"]
+    do_bayes: true
+    all_plots: true
+    subdir: "final/bayes/env-K"
+    seed: 1917
+
+  # ====== PLACEHOLDER: TEMPLATE FOR NEW RUNS ======
+  
+  - name: "test"
+    description: "Placeholder run for testing"
+    # Modify any defaults you need to change:
+    env_opt: "env-survival"
+    env_vars: ["sst", "mld"]
+    yr1: 1970
+    yr2: 2023
+    all_plots: true
+    do_bayes: false
+    subdir: "final/my_category/my_run_name"
+
+
+# ==========================================================================================
+# EXECUTION GROUPS (Optional)
+# ==========================================================================================
+# Groups allow you to run subsets of configurations together.
+# Example: run_config("runs.yaml", group = "baselines")
+# ==========================================================================================
+
+groups:
+  maximum_likelihood:
+    - "ML_env_survival"
+    - "ML_rs"
+    - "ML_env_k"
+    - "ML_ddonly"
+  
+  sensitivity_short:
+    - "sensitivity_sst_only"
+    - "sensitivity_mld_only"
+    - "sensitivity_no_k_prior"
+  
+  bayesian:
+    - "bayes_env_survival_main"
+    - "bayes_env_k"
+  
+  all:
+    - "baseline_env_survival"
+    - "baseline_rs"
+    - "baseline_ddonly"
+    - "baseline_env_k"
+    - "sensitivity_shorter_window"
+    - "sensitivity_sst_only"
+    - "sensitivity_mld_only"
+    - "sensitivity_no_random_effects"
+    - "sensitivity_no_k_prior"
+    - "bayes_env_survival_main"
+    - "bayes_env_k"

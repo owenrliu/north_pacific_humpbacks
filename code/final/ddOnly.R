@@ -1,3 +1,97 @@
+# ========================================================================================================================
+# BUILD RTMB PARAMETERS
+# ========================================================================================================================
+build_ddOnly_parameters <- function(base_params, SFdev, Kdev, log_Ksigma,
+                                    log_alphaK, log_betaK, envParams) {
+  #' Add density-dependent RTMB parameters for ddOnly model
+  #'
+  #' The ddOnly (Density-Dependent Only) model:
+  #'   - Uses DENSITY DEPENDENCE in both survival and recruitment
+  #'   - Estimates strength of DD: alphaK (fecundity), betaK (survival)
+  #'   - Allows carrying capacity to vary year-to-year: Kdev
+  #'   - Estimates variance of K deviations: log_Ksigma
+  #'   - NO environmental covariates (envParams included but fixed to zero)
+  #'   - Survival deviations fixed (DD is determined by density, not random variation)
+  #'
+  #' Parameter interpretation:
+  #'   - SFdev: Survival deviations (included for compatibility, will be fixed to NA)
+  #'   - Kdev: Deviations of K from base K (Nfeed × Nyears)
+  #'   - log_Ksigma: log-scale variance of K deviations (single parameter)
+  #'   - log_alphaK: strength of DD effect on fecundity (negative = more DD)
+  #'   - log_betaK: strength of DD effect on survival (negative = more DD)
+  #'   - envParams: Environmental coefficients (included but FIXED to NA)
+  #'
+  #' @param base_params List from build_base_parameters()
+  #' @param SFdev Survival dev matrix (will be fixed, not estimated)
+  #' @param Kdev Carrying capacity deviations (Nfeed × Nyears)
+  #' @param log_Ksigma log-scale variance of K deviations
+  #' @param log_alphaK log-scale DD strength in fecundity
+  #' @param log_betaK log-scale DD strength in survival
+  #' @param envParams Environment parameters (included but fixed)
+  #'
+  #' @return Parameter list for ddOnly model
+  
+  params <- base_params
+  
+  # Density-dependent parameters
+  params$SFdev <- SFdev
+  params$Kdev <- Kdev
+  params$log_Ksigma <- log_Ksigma
+  params$log_alphaK <- log_alphaK
+  params$log_betaK <- log_betaK
+  
+  # Environment slot (not used in ddOnly, but allocated)
+  params$envParams <- envParams
+  
+  params
+}
+# ========================================================================================================================
+# BUILD RTMB MAP
+# ========================================================================================================================
+build_ddOnly_map <- function(base_map, SFdev, Kdev, envParams, AddCV = FALSE) {
+  #' Build RTMB map constraints for ddOnly model
+  #'
+  #' The ddOnly model FIXES:
+  #'   - envParams: No environment in ddOnly (fix all to NA)
+  #'   - Kdev: Carrying capacity deviations are fixed
+  #'   - SFdev: Survival deviations are fixed (DD controls survival)
+  #'   - log_Ksigma: Variance of K is fixed (not estimating K variation)
+  #'
+  #' The ddOnly model ESTIMATES:
+  #'   - log_alphaK: DD strength in fecundity
+  #'   - log_betaK: DD strength in survival
+  #'
+  #' @param base_map List from build_base_map()
+  #' @param SFdev Survival dev matrix (for length)
+  #' @param Kdev K dev matrix (for length)
+  #' @param envParams Environment parameters (for length)
+  #' @param AddCV Logical
+  #'
+  #' @return List of factor() constraints
+  
+  map <- base_map
+  
+  # Fix environmental parameters (not used in ddOnly)
+  map$envParams <- rep(factor(NA), length(envParams))
+  
+  # Fix carrying capacity deviations
+  map$Kdev <- rep(factor(NA), length(Kdev))
+  
+  # Fix variance of K deviations
+  map$log_Ksigma <- factor(NA)
+  
+  # Fix survival deviations (DD controls survival, not random deviations)
+  map$SFdev <- rep(factor(NA), length(SFdev))
+  
+  if (!AddCV) {
+    map$AddV <- rep(factor(NA), 1)
+  }
+  
+  map
+}
+# ========================================================================================================================
+# K PRIOR HELPER FUNCTION
+# ========================================================================================================================
 calcKPrior <- function(Kmax){
   
   Ks <- seq(from=0,to=3*Kmax,length=100)
@@ -24,8 +118,9 @@ calcf0 <- function(SA,SC,Amat){
   f0 <- 2*(1.0-SA)/(SC*SA^(Amat))
   f0
 }
-# MODEL
-# ========================================================================================
+# ========================================================================================================================
+# MAIN MODEL FUNCTION
+# ========================================================================================================================
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
 f <- function(parms,dat)
  {

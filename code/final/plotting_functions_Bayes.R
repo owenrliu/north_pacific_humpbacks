@@ -13,7 +13,7 @@ theme_set(theme_minimal()+theme(panel.border = element_rect(color='black',fill=N
 
 ##-----Load----
 # Load a saved model object
-# bayes <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_Bayes.rds'))
+# bayes <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_Bayes.rds'))
 # # and its ML equivalent
 # # model obj
 # TMBobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_TMB.rds'))
@@ -21,12 +21,11 @@ theme_set(theme_minimal()+theme(panel.border = element_rect(color='black',fill=N
 # TMBout <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC.rds'))
 
 # Load a saved model object
-bayes <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
-# # # and its ML equivalent
-# # # model obj
-TMBobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
+# bayes <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
+# and its ML equivalent
+# TMBobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
 # # # inputs and outputs
-TMBout <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC.rds'))
+# TMBout <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC.rds'))
 
 # Load a saved model object
 # bayes <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_Bayes.rds'))
@@ -136,7 +135,7 @@ pull_dq <- function(dqlist,qname){
 }
 
 # Abundance
-plot_abundance <- function(dqlist,TMBout,opt="total"){
+plot_abundance <- function(dqlist,TMBout,opt="total",return_df=F){
   
   yrs <- pluck(TMBout,"input","Years")
   numyr <- length(yrs)
@@ -155,6 +154,7 @@ plot_abundance <- function(dqlist,TMBout,opt="total"){
   
   # get raw survey data
   Surveys <- read_csv(here('Diags','SurveyUse',paste0(TMBout$Code,TMBout$SensCase,".csv")),show_col_types = F)
+  
   # survey catchability for scaling (use ML estimate for now)
   Qvec <- TMBout$report$Qest
   Qvec[1] <- 1
@@ -232,20 +232,26 @@ plot_abundance <- function(dqlist,TMBout,opt="total"){
     zn <- pluck(TMBout,'input','FeedNames') |> as.character()
     numz <- length(zn)
     
+    znmatch <- tibble(zn=zn,zonelab=paste0(6:11,".",zn))
+    
     quants <- apply(NmatF,c(1,2,3),quantile,probs=c(0.025,0.25,0.50,0.75,0.975))
     
     d <- tibble(year=rep(yrs,each=numz*3)) |> 
-      mutate(zone=rep(rep(zn,each=3),numyr)) |>
+      mutate(zone=rep(rep(znmatch$zn,each=3),numyr)) |>
+      mutate(zonelab=rep(rep(znmatch$zonelab,each=3),numyr)) |>
       mutate(component=rep(c("0+","1+","Mature"),numyr*numz)) |> 
       mutate(year=as.integer(year)) |> 
       mutate(low=as.numeric(quants[1,,,]),
              lowmid=as.numeric(quants[2,,,]),
              median=as.numeric(quants[3,,,]),
              uppermid=as.numeric(quants[4,,,]),
-             upper=as.numeric(quants[5,,,]))
+             upper=as.numeric(quants[5,,,])) |>
+      mutate(zonelab = factor(zonelab,levels=znmatch$zonelab))
     
     surv <- survd |> filter(Area%in%unique(d$zone)) |> 
-      rename(zone=Area)
+      rename(zone=Area) |> 
+      left_join(znmatch,by=join_by(zone==zn)) |> 
+      mutate(zonelab = factor(zonelab,levels=znmatch$zonelab))
     survRel <- surv |> filter(Rel=="Rel")
     survAbs <- surv |> filter(Rel=="Abs")
     
@@ -257,13 +263,15 @@ plot_abundance <- function(dqlist,TMBout,opt="total"){
       scale_color_manual(values=c("#756BB1","#238B8B","#E6781E"))+
       labs(x="Year",y="Abundance",fill="Component",color="Component")+
       geom_pointrange(data=survRel,aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower),
-                      linetype=2,size=0.5,color="gray50")+
+                      linetype=2,size=0.15,color="#D4A847")+
       geom_pointrange(data=survAbs,aes(year,rescaled.est,ymax=rescaled.upper,ymin=rescaled.lower),
-                      linetype=2,size=0.5,color="gray20")+
-      facet_wrap(~zone,scales='free_y')
+                      linetype=2,size=0.15,color="gray20")+
+      facet_wrap(~zonelab,scales='free_y')
   }
-  p
+  if(return_df) return(d)
+  else return(p)
 }
+
 # Compare the observed to model-predicted breeding to feeding
 # and feeding to breeding proportions.
 # Option- direction must be either "B-F" or "F-B"
@@ -325,6 +333,7 @@ plot_proportions <- function(dqlist,TMBout,direction="B-F"){
       geom_point(data=d2,aes(labBF,median,color=dataset,shape=dataset,group=dataset),
                  position=position_nudge(x=0.1),size=3)+
       scale_y_continuous(labels=seq(0,1,by=0.2),breaks=seq(0,1,by=0.2))+
+      coord_cartesian(ylim=c(0,1.1))+
       # scale_fill_manual(values=c("#756BB1","#238B8B","#E6781E"))+
       scale_color_manual(values=c("#E6781E","#756BB1","#238B8B"))+
       scale_shape_manual(values=c(16,1,17))+
@@ -350,6 +359,7 @@ plot_proportions <- function(dqlist,TMBout,direction="B-F"){
       geom_point(data=d2,aes(labFB,median,color=dataset,shape=dataset,group=dataset),
                  position=position_nudge(x=0.1),size=3)+
       scale_y_continuous(labels=seq(0,1,by=0.2),breaks=seq(0,1,by=0.2))+
+      coord_cartesian(ylim=c(0,1.1))+
       # scale_fill_manual(values=c("#756BB1","#238B8B","#E6781E"))+
       scale_color_manual(values=c("#E6781E","#756BB1","#238B8B"))+
       scale_shape_manual(values=c(16,1,17))+
@@ -362,11 +372,18 @@ plot_proportions <- function(dqlist,TMBout,direction="B-F"){
 # plot mixing as an alluvial plot, but with the last year's numbers instead of fitted mixing proportions
 plot_mixing <- function(dqlist){
   
-  BreedNames <- pluck(TMBout,'input','BreedNames') |> as.character()
-  BreedNames[BreedNames=="Central_Am"] <- "CenAm"
-  BreedNames <- factor(BreedNames,levels=BreedNames)
-  FeedNames <- pluck(TMBout,'input','FeedNames') |> as.character()
-  FeedNames <- factor(FeedNames,levels=FeedNames)
+  # BreedNames <- pluck(TMBout,'input','BreedNames') |> as.character()
+  # BreedNames[BreedNames=="Central_Am"] <- "CenAm"
+  # BreedNames <- factor(BreedNames,levels=BreedNames)
+  # FeedNames <- pluck(TMBout,'input','FeedNames') |> as.character()
+  # FeedNames <- factor(FeedNames,levels=FeedNames)
+  
+  BreedNames <- c("1.Asia","2.Hawai'i","4.Mexican\nIslands","3.Mainland\nMexico","5.Central America")
+  BreedNames=factor(BreedNames,levels=BreedNames)
+  FeedNames <- c("6.Russia and\nWestern Aleutians","7.Eastern Aleutians\nand Bering Sea","8.Gulf of Alaska",
+    "9.Southeast Alaska\nand Northern B.C.","10.Southern B.C. and\nWashington","11.Oregon and\nCalifornia")
+  FeedNames=factor(FeedNames,levels=FeedNames)
+  
   # extract breeding to feeding ground proportions
   d <- pull_dq(dqlist,"NNS") |> simplify2array()
   # last year's abundance, as a median across all posterior draws
@@ -379,7 +396,8 @@ plot_mixing <- function(dqlist){
     geom_alluvium(aes(fill=Breed))+
     geom_stratum(width=1/12,fill='gray80',color='black',alpha=0.5)+
     geom_text(stat="stratum",aes(label=after_stat(stratum)),
-              color='black',size=5,nudge_x=c(rep(0.1,length(BreedNames)),rep(-0.1,length(FeedNames))))+
+              color='black',nudge_x=c(rep(0.05,length(BreedNames)),rep(-0.05,length(FeedNames))),
+              size=3,hjust="inward")+
     theme_classic()+
     scale_fill_manual(values=viridis_pal(option="G")(5),guide='none')+
     theme(panel.border = element_blank(),
@@ -780,16 +798,18 @@ plot_compare_mort <- function(dqlist,TMBout,opt='total',type="raw"){
       mFdf <- mFdf |> 
         left_join(catchfdf,by=join_by(year,zone))
       p <- mFdf |> 
+        filter(zone!="RUS+WAL") |> 
         filter(year>1994) |> 
         ggplot(aes(x=year))+
         geom_line(aes(y=catch,color="Catch: Feeding"))+
         geom_ribbon(aes(ymin=low,ymax=upper,fill="Natural"),alpha=0.5)+
         geom_ribbon(aes(ymin=lowmid,ymax=uppermid,fill="Natural"),alpha=0.7)+
-        geom_line(aes(y=median,color="Natural"),color="#756BB1")+
+        geom_line(aes(y=median,color="Natural"),color="black")+
         scale_fill_manual(values=c("Catch: Breeding"="#238B8B","Catch: Feeding"="#E6781E","Natural"="#756BB1"))+
         scale_color_manual(values=c("Catch: Breeding"="#238B8B","Catch: Feeding"="#E6781E","Natural"="#756BB1"))+
         labs(x="Year",y="Mortality (ind.)",color="Source",fill="")+
-        facet_wrap(~zone)
+        facet_wrap(~zone)+
+        theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
     }
   }
   if(type=="cumulative"){
@@ -1059,7 +1079,7 @@ plot_r <- function(bayesobj,dqlist,TMBout=TMBout){
     geom_line(data=d,aes(year,median))+
     geom_hline(yintercept=rmax*100,linetype=2)+
     geom_hline(yintercept=0,linetype=2,color='red')+
-    annotate("text",x=2020,y=10,label="r_max")+
+    annotate("text",x=2020,y=10,label=expression(r[max]))+
     coord_cartesian(expand = c(0,0))+
     labs(y="Realized Annual Growth Rate (%)",x="Year")
   
@@ -1115,25 +1135,41 @@ plot_recovery_t <- function(bayesobj,dqlist,TMBout=TMBout){
 
 ##----## Environmental Index ##----
 plot_omegas <- function(bayesobj,TMBout){
-  df <- summary(bayesobj)$summary |> 
-    as_tibble(rownames="parameter")
-  # split into -1:1 scale and larger
+  df <- rstan::extract(bayesobj,pars=c("envParams"))[[1]]
+  
+  # df <- summary(bayesobj)$summary |>
+  #   as_tibble(rownames="parameter")
+  
   # parameter names
   envVars <- pluck(TMBout,"input","envVars")
   SF <- pluck(TMBout,"input","SF")
   zn <- pluck(TMBout,'input','FeedNames') |> as.character()
   zn <- zn[which(SF==1)]
   numz <- length(zn)
+  numomegas <- numz*length(envVars)
   
-  df2 <- df |> 
-    filter(grepl("envParams",parameter)) |> 
-    mutate(zone=rep(zn,length(envVars)),
-           variable=rep(envVars,each=numz))
+  df2 <- tibble(zone=rep(zn,length(envVars)),
+                parameter=rep(envVars,each=length(zn)))
+  # df2 <- df |>
+  #   filter(grepl("envParams",parameter)) |>
+  #   mutate(zone=rep(zn,length(envVars)),
+  #          variable=rep(envVars,each=numz))
+  df2 <- map(seq_len(nrow(df)), ~df2) |> 
+    list_rbind() |> mutate(value=as.numeric(t(df)))
+  # p <- df2 |> 
+  #   ggplot()+
+  #   geom_linerange(aes(variable,mean,ymin=`2.5%`,ymax=`97.5%`),linewidth=1,color='lightblue')+
+  #   geom_pointrange(aes(variable,mean,ymin=`25%`,ymax=`75%`),linewidth = 1.5,color='gray50')+
+  #   labs(x="Parameter",y="Estimate (95% CI)",title="Parameter Estimates")+
+  #   theme_minimal()+
+  #   geom_hline(yintercept=0,linetype=2)+
+  #   facet_wrap(~zone)+
+  #   theme(panel.border = element_rect(color='black',fill=NA),
+  #         axis.text.x=element_text(angle=45,hjust=1,vjust=1))
   p <- df2 |> 
-    ggplot()+
-    geom_linerange(aes(variable,mean,ymin=`2.5%`,ymax=`97.5%`),linewidth=1,color='lightblue')+
-    geom_pointrange(aes(variable,mean,ymin=`25%`,ymax=`75%`),linewidth = 1.5,color='gray50')+
-    labs(x="Parameter",y="Estimate (95% CI)",title="Parameter Estimates")+
+    ggplot(aes(parameter,value))+
+    geom_violin(fill="#2B7BBA",alpha=0.7,quantile.linetype = 1,quantiles=c(0.5))+
+    labs(x="Parameter",y="Estimate",title="")+
     theme_minimal()+
     geom_hline(yintercept=0,linetype=2)+
     facet_wrap(~zone)+
@@ -1273,9 +1309,13 @@ plot_BH <- function(bayesobj,type="surv"){
 }
 
 # Plot environmental index vs. survival for env-K model
-plot_BH_surv <- function(dqlist){
+plot_BH_surv <- function(dqlist,TMBout){
   edat <- pull_dq(dqlist,"env_index") |> simplify2array()
   sdat <- pull_dq(dqlist,"SurvOutF") |> simplify2array()
+  
+  SF <- pluck(TMBout,"input","SF")
+  zn <- pluck(TMBout,'input','FeedNames') |> as.character()
+  zn <- zn[which(SF==1)]
   sdat <- sdat[which(SF==1),(dim(sdat)[2]-dim(edat)[2]+1):dim(sdat)[2],]
   
   df <- map(1:1000,\(x){
@@ -1383,7 +1423,7 @@ plot_BH_panel <- function(bayesobj,TMBout,dqlist){
   p1 <- plot_BH(bayesobj)
   p2 <- plot_envIndex_K(dqlist)
   p3 <- plot_Kdev(bayesobj,TMBout)
-  p4 <- plot_BH_surv(dqlist)
+  p4 <- plot_BH_surv(dqlist,TMBout)
   p5 <- plot_survival(dqlist,TMBout)
   p6 <- plot_envIndex(dqlist,TMBout)
   cowplot::plot_grid(p1,p2,p4,p6,p3,p5,nrow=2,rel_heights = c(1,1.2))
@@ -1489,13 +1529,13 @@ make_all_Bayes_plots <- function(subdir,mtype="rS"){
 }
 ##----## Comparison ##----
 # some plots we explicitly want to compare multiple model types directly
-
-rSobj <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_Bayes.rds'))
-envSobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
-envKobj <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_Bayes.rds'))
-ddobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_Bayes.rds'))
-
-MOM6envSobj <- read_rds(here('Diags','final','env-survival test','B2F1BC_Bayes.rds'))
+# 
+# rSobj <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_Bayes.rds'))
+# envSobj <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_Bayes.rds'))
+# envKobj <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_Bayes.rds'))
+# ddobj <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_Bayes.rds'))
+# 
+# MOM6envSobj <- read_rds(here('Diags','final','env-survival test','B2F1BC_Bayes.rds'))
 
 # compare survival "uncertainty" (variance terms)
 compare_sigmas <- function(rSobj,envKobj,envSobj,MOM6envSobj){
@@ -1603,79 +1643,79 @@ compare_BK <- function(rSobj,envKobj,envSobj,ddobj){
 # Using the Savage-Dickey density ratio approach
 # Compare prior to posterior density evaluated at 0
 
-test <- as.data.frame(envSobj)
-test2 <- test |> pull("envParams[1]")
-savage_dickey <- function(samples, prior_density_at_0, bw = "SJ") {
-  dens <- density(samples, bw = bw, n = 2048)
-  posterior_at_0 <- approx(dens$x, dens$y, xout = 0)$y
-  
-  BF01 <- posterior_at_0 / prior_density_at_0
-  BF10 <- 1 / BF01
-  
-  tibble(
-    posterior_at_0   = posterior_at_0,
-    prior_at_0       = prior_density_at_0,
-    BF01             = BF01,
-    BF10             = BF10
-  )
-}
-savage_dickey(test2,prior_density_at_0 = dnorm(0,0,1))
-# for all envParams
-whichP <- which(grepl("envParams",names(test)))
-envParamBFs <- map(whichP,\(x){
-  samps <- test[[x]]
-  df <- savage_dickey(samps,prior_density_at_0 = dnorm(0,0,1))
-  df |> mutate(param=names(test)[x])
-}) |> list_rbind()
-envParamBFs |> 
-  ggplot(aes(fct_reorder(param,desc(BF10)),BF10))+
-  geom_point()+
-  geom_hline(yintercept=1,linetype=2)+
-  theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))+
-  labs(x="Parameter",y="Bayes Factor BF10")
-# Conclusion: This works, but can just use credible intervals instead
-
-## Data importance- LOO?
-test <- rstan::loo(bayes,pars="lp__")
-
+# test <- as.data.frame(envSobj)
+# test2 <- test |> pull("envParams[1]")
+# savage_dickey <- function(samples, prior_density_at_0, bw = "SJ") {
+#   dens <- density(samples, bw = bw, n = 2048)
+#   posterior_at_0 <- approx(dens$x, dens$y, xout = 0)$y
+#   
+#   BF01 <- posterior_at_0 / prior_density_at_0
+#   BF10 <- 1 / BF01
+#   
+#   tibble(
+#     posterior_at_0   = posterior_at_0,
+#     prior_at_0       = prior_density_at_0,
+#     BF01             = BF01,
+#     BF10             = BF10
+#   )
+# }
+# savage_dickey(test2,prior_density_at_0 = dnorm(0,0,1))
+# # for all envParams
+# whichP <- which(grepl("envParams",names(test)))
+# envParamBFs <- map(whichP,\(x){
+#   samps <- test[[x]]
+#   df <- savage_dickey(samps,prior_density_at_0 = dnorm(0,0,1))
+#   df |> mutate(param=names(test)[x])
+# }) |> list_rbind()
+# envParamBFs |> 
+#   ggplot(aes(fct_reorder(param,desc(BF10)),BF10))+
+#   geom_point()+
+#   geom_hline(yintercept=1,linetype=2)+
+#   theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))+
+#   labs(x="Parameter",y="Bayes Factor BF10")
+# # Conclusion: This works, but can just use credible intervals instead
 # 
-pairs(bayes,pars=c("rval","logBK"))
-
-# Extract survival variance diff directly?
-# test <- pull_dq(dq,"SurvOutF") |> simplify2array()
-# vtest <- apply(test,c(1,2),var)
+# ## Data importance- LOO?
+# test <- rstan::loo(bayes,pars="lp__")
 # 
-# bayesl <- list(ddobj,rSobj,envSobj,envKobj)
-# rSTMB <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_TMB.rds'))
-# envSTMB <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
-# envKTMB <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_TMB.rds'))
-# ddTMB <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_TMB.rds'))
-# TMBl <- list(ddTMB,rSTMB,envSTMB,envKTMB)
+# # 
+# pairs(bayes,pars=c("rval","logBK"))
 # 
-# sfvar <- map2(bayesl,TMBl,\(x,y){
-#   dq <- calc_dq(x,y)
-#   vx <- pull_dq(dq,"SurvOutF") |> simplify2array() |> apply(c(1,2),var)
-#   out <- tibble(feed=rep(as.character(TMBout$input$FeedNames),dim(vtest)[2]),
-#          year=rep(1:54,each=6),
-#          variance=as.numeric(vx)) |> 
-#     filter(year>30)
-#   out
-# })
-#                    
-# sfvar <- list_rbind(sfvar,names_to="model")
-  
-psfvar <- sfvar |> 
-  ggplot(aes(year,variance,color=factor(model)))+
-  geom_point()+
-  geom_line()+
-  facet_wrap(~feed)
-psfvar
-# this seems an interesting way to compare to the other models
-
-
-## Manual loo
-library(rstan)
-library(loo)
-test <- loo(envSobj,pars = "log_sigmaEnv")
-test2 <- loo(MOM6envSobj,pars = "log_sigmaEnv")
-test3 <- loo_compare(test,test2)
+# # Extract survival variance diff directly?
+# # test <- pull_dq(dq,"SurvOutF") |> simplify2array()
+# # vtest <- apply(test,c(1,2),var)
+# # 
+# # bayesl <- list(ddobj,rSobj,envSobj,envKobj)
+# # rSTMB <- read_rds(here('Diags','final','rS Bayes test','B2F1BC_TMB.rds'))
+# # envSTMB <- read_rds(here('Diags','final','env-survival Bayes','B2F1BC_TMB.rds'))
+# # envKTMB <- read_rds(here('Diags','final','env-K Bayes','B2F1BC_TMB.rds'))
+# # ddTMB <- read_rds(here('Diags','final','ddOnly Bayes','B2F1BC_TMB.rds'))
+# # TMBl <- list(ddTMB,rSTMB,envSTMB,envKTMB)
+# # 
+# # sfvar <- map2(bayesl,TMBl,\(x,y){
+# #   dq <- calc_dq(x,y)
+# #   vx <- pull_dq(dq,"SurvOutF") |> simplify2array() |> apply(c(1,2),var)
+# #   out <- tibble(feed=rep(as.character(TMBout$input$FeedNames),dim(vtest)[2]),
+# #          year=rep(1:54,each=6),
+# #          variance=as.numeric(vx)) |> 
+# #     filter(year>30)
+# #   out
+# # })
+# #                    
+# # sfvar <- list_rbind(sfvar,names_to="model")
+#   
+# psfvar <- sfvar |> 
+#   ggplot(aes(year,variance,color=factor(model)))+
+#   geom_point()+
+#   geom_line()+
+#   facet_wrap(~feed)
+# psfvar
+# # this seems an interesting way to compare to the other models
+# 
+# 
+# ## Manual loo
+# library(rstan)
+# library(loo)
+# test <- loo(envSobj,pars = "log_sigmaEnv")
+# test2 <- loo(MOM6envSobj,pars = "log_sigmaEnv")
+# test3 <- loo_compare(test,test2)

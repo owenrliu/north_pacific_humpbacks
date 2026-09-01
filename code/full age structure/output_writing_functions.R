@@ -4,7 +4,7 @@ require(here)
 
 WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,StockDef,data,subdir=""){
   # create file directory if it does not exist yet
-  fildir <- here("Diags",subdir)
+  fildir <- here('assessment',"Diags",subdir)
   if(!dir.exists(fildir)) dir.create(fildir)
   # save data and rept as rds for easier access to plotting later
   outs <- list(Code=Code,SensCase=Abbrev,input=data,report=rept,sdreport=rep,sdfixed=rep2)
@@ -17,7 +17,7 @@ WriteOut <- function(Code,Abbrev,Yr1,Yr2,BreedNames,FeedNames,rept,rep,rep2,Stoc
   Nbreed <- length(BreedNames)
   Nfeed <- length(FeedNames)
   
-  FileName <- here("Diags",subdir,paste0(Code,Abbrev,".Out"))
+  FileName <- here("assessment","Diags",subdir,paste0(Code,Abbrev,".Out"))
   write(paste0("Stock structure: ",Code,"; Model type = ",Abbrev),FileName)
   if (StockDef$StochSopt==0) write("Mortality impacts breeding stocks",FileName,append=T)
   if (StockDef$StochSopt==1) write("Mortality impacts feeding grounds",FileName,append=T)

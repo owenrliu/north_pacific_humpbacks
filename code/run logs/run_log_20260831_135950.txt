@@ -1,0 +1,18 @@
+Run Configuration Log
+Generated: 2026-08-31 13:59:50.044404
+
+Execution Summary
+--------------------------------------------------------------------------------
+Total runs: 1
+Successful: 1
+Failed: 0
+Total time: 89.2 minutes
+
+Run Details
+--------------------------------------------------------------------------------
+
+Run: baseline_env_survival
+Description: Main production model: env-survival with SST+MLD
+Status: success
+Time: 89.2 min
+Config: env_opt=env-survival, years=1970-2023, subdir=final/baseline/env-survival

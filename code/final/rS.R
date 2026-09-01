@@ -1,3 +1,58 @@
+# ========================================================================================================================
+# BUILD RTMB PARAMETERS
+# ========================================================================================================================
+build_rS_parameters <- function(base_params, SFdev, log_SFsigma) {
+  #' Build R/TMB parameters for the rS model variant
+  #' Parameter interpretation:
+  #'   - SFdev: Year-specific deviations in log-survival (Nfeed × Nyears matrix)
+  #'   - log_SFsigma: log-scale standard deviation of these deviations
+  #'
+  #' @param base_params List from build_base_parameters() with common params
+  #' @param SFdev Matrix of initial survival deviations (Nfeed × Nyears, typically zeros)
+  #' @param log_SFsigma log-scale SD of survival deviations
+  #'
+  #' @return List with rS-specific parameters added to base_params
+  
+  params <- base_params
+  params$SFdev <- SFdev
+  params$log_SFsigma <- log_SFsigma
+  
+  # Return the augmented parameter list
+  params
+}
+# ========================================================================================================================
+# BUILD RTMB MAP
+# ========================================================================================================================
+build_rS_map <- function(base_map, SFdev = NULL, AddCV = FALSE) {
+  #' Build the TMB map (factor(NA) constraints) for rS model
+  #'
+  #' The rS model doesn't fix any additional parameters beyond the base map:
+  #'   - All survival deviations are ESTIMATED
+  #'   - log_SFsigma is ESTIMATED (variance of deviations)
+  #'   - No environmental parameters exist in rS (unlike env-survival)
+  #'
+  #' Only modifies the base_map if AddCV is FALSE (then fix AddV)
+  #'
+  #' @param base_map List from build_base_map() with common fixes
+  #' @param SFdev Unused (kept for consistency with other model builders)
+  #' @param AddCV Logical, whether additional variance is being estimated
+  #'
+  #' @return List of factor() constraints for TMB
+  
+  map <- base_map
+  
+  # If not estimating additional CV, fix those parameters
+  if (!AddCV) {
+    map$AddV <- rep(factor(NA), 1)  # or however many AddV params exist
+  }
+  
+  # That's it! rS doesn't fix any other parameters.
+  # All survival deviations (SFdev) are random effects (handled by rvars in DoRun)
+  map
+}
+# ========================================================================================================================
+# K PRIOR HELPER FUNCTION
+# ========================================================================================================================
 calcKPrior <- function(Kmax){
   
   Ks <- seq(from=0,to=3*Kmax,length=100)
@@ -15,8 +70,9 @@ calcKPrior <- function(Kmax){
   
   KPriors
 }
-
-# ========================================================================================
+# ========================================================================================================================
+# MAIN MODEL FUNCTION
+# ========================================================================================================================
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
 f <- function(parms,dat)
  {

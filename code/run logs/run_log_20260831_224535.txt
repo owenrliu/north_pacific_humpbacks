@@ -1,0 +1,18 @@
+Run Configuration Log
+Generated: 2026-08-31 22:45:35.325227
+
+Execution Summary
+--------------------------------------------------------------------------------
+Total runs: 1
+Successful: 1
+Failed: 0
+Total time: 2.3 minutes
+
+Run Details
+--------------------------------------------------------------------------------
+
+Run: ML_env_k
+Description: Varying K driven by environment, maximum likelihood
+Status: success
+Time: 2.3 min
+Config: env_opt=env-K, years=1970-2023, subdir=final/ml/env-K

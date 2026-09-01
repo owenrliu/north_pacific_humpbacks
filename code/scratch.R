@@ -196,14 +196,15 @@ fooh <- function(base_s,beta,depl){
   Sy
 }
 crossing(depl=seq(0,1.2,by=0.05),base_s=0.96,
-         beta=0.5461946) |> 
+         beta=seq(0.25,1.5,by=.25)) |> 
          # beta=seq(0,6,by=1)) |> 
   mutate(surv=fooh(base_s,beta,depl)) |> 
   ggplot(aes(depl,surv,color=ordered(beta)))+
   geom_line()+
   theme_minimal()+
   labs(color=expression(beta),x="Depletion",y="Survival")+
-  theme(panel.border=element_rect(color='black',fill=NA))
+  theme(panel.border=element_rect(color='black',fill=NA),
+        text=element_text(size=16))
 
 # density-dependent fecundity with varying K?
 foof <- function(rval=0.09,Amat=8,SA=0.96,SC=0.8,betaK=4,Depl){
@@ -344,3 +345,108 @@ tibble(N=seq(1,75000,length.out=100)) |>
   mutate(t=foo_recov(N=N)) |> 
   ggplot(aes(N,t))+geom_line()+
   geom_vline(xintercept=77000)
+
+## Check CenAm mixing data
+
+BreedNames <- pluck(TMBout,'input','BreedNames') |> as.character()
+FeedNames <- pluck(TMBout,'input','FeedNames') |> as.character()
+# extract breeding to feeding ground proportions
+d <- pluck(TMBout,"report","ObsMixProp")
+
+# identifiers:
+# column 1: 1= breeding to feeding; 2= feeding to breeding
+# column 2: mixing dataset (1 or 2, mark-recapture vs. genetics)
+# column 3: which breeding ground
+# column 4: which feeding ground
+dwhich <- pluck(TMBout,"report","ObsMixPropI") |> 
+  as_tibble(.name_repair="minimal") |> 
+  set_names(c("direction","dataset","breed","feed"))
+
+dp <- dwhich |>
+  mutate(direction=ifelse(direction==1,"B-F","F-B"),
+         dataset=ifelse(dataset==1,"mark-recapture","genetics"),
+         breed=BreedNames[breed],
+         feed=FeedNames[feed]) |>  
+  #smash the names together
+  unite(labBF,breed,feed,remove=F) |> 
+  unite(labFB,feed,breed,remove=F) |> 
+  mutate(est=d[,1],sd=d[,2]) |> 
+  complete(breed,feed,dataset,direction,fill=list(est=0,sd=0)) |> 
+  filter(breed=="Central_Am") |> 
+  mutate(upper=est+1.96*sd,low=est-1.96*sd)
+
+dp |> 
+  # filter(est>0) |> 
+  mutate(apport=ifelse(direction=="B-F","from Central America","to Central America")) |> 
+  ggplot(aes(feed,est,ymax=upper,ymin=low,color=dataset,shape=dataset))+
+  geom_pointrange(position=position_dodge(width=0.2))+
+  facet_wrap(~apport)+
+  labs(x="Feeding Ground",y="Proportion")+
+  theme_minimal()+theme(panel.border = element_rect(fill=NA,color='black'))
+
+# from raw
+DatFile <- read.table(here('data',"Hump.dat"), fill = T, col.names = c(1:200), comment.char = "?")
+
+# Read in mixing data
+MixFile1 <- read.csv(here("data", "Genetics_mixing_data_allscenarios_table_Long.csv"))
+MixFile2 <- read.csv(here("data", "Mark-Recapture_mixing_data_allscenarios_table_Long.csv"))
+MixFile <- rbind(MixFile1, MixFile2)
+Index <- which(MixFile$Hypothesis == Code)
+MixFile <- MixFile[Index, ]
+
+Type <- c("Mark-Recapture", "Genetics")
+NmixData <- 0
+Nprop <- rep(0, 4)
+Index <- which(DatFile[, 2] == "Minimum_CV_for_the_mixing_data")
+MinMixCV <- as.numeric(DatFile[Index + 1, 1])
+Index <- which(DatFile[, 2] == "Minimum_SD_for_the_mixing_data")
+MinMixSD <- as.numeric(DatFile[Index + 1, 1])
+MaxN=-1000
+MixWeights=c(1,1)
+
+# Now pull out results (breeding to feeding)
+Nbreed=5;Nfeed=6
+# Now pull out results (feeding to breeding)
+ObsMixFtoBE <- array(0, dim = c(2, Nbreed, Nfeed))
+ObsMixFtoBP <- array(0, dim = c(2, Nbreed, Nfeed))
+ObsMixFtoBO <- matrix(0, nrow = 2, ncol = Nfeed)
+
+for (Itype in 1:2){
+  Index <- MixFile$Method == Type[Itype] & MixFile$Direction == "FeedingtoBreeding"
+  MixFile2 <- MixFile[Index, ]
+  for (Ifeed in 1:length(FeedNames))
+  {
+    Total <- 0
+    Top <- 0
+    Bot <- 0
+    for (Ibreed in 1:length(BreedNames)){
+      Index <- MixFile2$Feeding %in% FeedNames[Ifeed] & MixFile2$Breeding %in% BreedNames[Ibreed]
+      Est <- as.numeric(MixFile2$Estimate[Index])
+      CV <- as.numeric(MixFile2$CV[Index])
+      SD <- CV * Est
+      if (is.na(CV)) {
+        Lower95 <- as.numeric(MixFile2$lowerCI[Index])
+        Upper95 <- as.numeric(MixFile2$upperCI[Index])
+        CV <- (Upper95 - Lower95) / (2.0 * 1.96) / Est
+        if (Est <= 0) CV <- 0
+        SD <- CV * Est
+      }
+      Top <- Top + Est * (1 - Est)
+      Bot <- Bot + SD^2
+      if (CV < MinMixCV) CV <- MinMixCV
+      SD <- Est * CV
+      if (Est > 0 & SD < MinMixSD) SD <- MinMixSD
+      if (Est > 0 || SD > 0) {
+        NmixData <- NmixData + 1
+        Nprop[Itype + 2] <- Nprop[Itype + 2] + 1
+      }
+      Total <- Total + Est
+      
+      # cat(Ibreed,Ifeed,Est,CV,SD,"\n")
+      ObsMixFtoBE[Itype, Ibreed, Ifeed] <- Est
+      ObsMixFtoBP[Itype, Ibreed, Ifeed] <- SD
+    } # Breed
+    ObsMixFtoBO[Itype, Ifeed] <- min(MaxN, Top / Bot * MixWeights[Itype])
+    # print(Total)
+  } # Feed
+}

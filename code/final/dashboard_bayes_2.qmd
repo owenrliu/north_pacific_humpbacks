@@ -1,0 +1,375 @@
+---
+title: "North Pacific Humpback Model Dashboard"
+format:
+  dashboard:
+    theme: darkly
+    nav-buttons: []
+    scrolling: true
+execute:
+  echo: false
+  warning: false
+  message: false
+params:
+  base_dir: "Diags/final"
+  nsamp: 2000
+  force_recompute: false
+embed-resources: true
+---
+
+```{r}
+#| context: setup
+library(tidyverse)
+library(here)
+library(kableExtra)
+library(DT)
+
+source(here("code", "final", "bayes_helpers.R"))
+
+# --- Discover the four Bayesian runs under Diags/final/ (anything under a "tests" ------
+# --- folder, e.g. Diags/final/env-survival test/, is skipped automatically) ------------
+run_index <- load_all_bayes_runs(here(params$base_dir), nsamp = params$nsamp, force = params$force_recompute)
+
+if (nrow(run_index) == 0) {
+  stop("No *_Bayes.rds runs were found under ", here(params$base_dir),
+       ". Check the `base_dir` param at the top of dashboard_bayes.qmd.")
+}
+
+summary_tbl <- bind_rows(map(run_index$data, summarize_bayes_run)) |>
+  mutate(subdir = run_index$subdir, .after = SensCase)
+
+objlist    <- run_index$data
+scen.names <- run_index$mtype
+```
+
+<style>
+/* DataTables (DT::datatable) text + controls on a dark theme */
+table.dataTable {
+  color: #fff;
+}
+table.dataTable thead th,
+table.dataTable thead td {
+  color: #fff;
+}
+table.dataTable tbody td {
+  color: #fff;
+}
+/* row striping so rows stay legible against a dark background */
+table.dataTable.stripe tbody tr.odd,
+table.dataTable.display tbody tr.odd {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+/* search box, page-length selector, pagination labels/buttons */
+.dataTables_wrapper .dataTables_filter label,
+.dataTables_wrapper .dataTables_length label,
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+  color: #fff;
+}
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+  color: #000; /* keep the input/select itself readable */
+}
+</style>
+
+# Overview
+
+## Row {height="20%"}
+
+### Column {width="100%"}
+We used data on abundance, stock structure, and removals, combined with environmental covariate data derived from an ocean model, to parameterize population dynamics models for North Pacific humpback whales. We designed four separate models which all had the same general structure, but varied in their specification of annual survival. Our general objectives were a) to assess whether and how humpback survival has varied since 2000; and b) to determine whether the inclusion of environmental information improves estimation of survival.
+
+## Row
+
+### Column {width="100%"}
+
+```{r,echo=F}
+#| label: tbl-models
+#| tbl-cap: "Summary of the population models used to assess time varying humpback survival."
+df <- data.frame(
+  Model=c("Random-survival","Environment-survival","Density-dependence only","Environment-K"),
+  Shorthand = c("rS","env-survival","ddOnly","env-K"),
+  Survival=c("Random effect","Survival is a function of environmental covariates and random error","Survival is a decreasing function of abundance relative to carrying capacity","Survival is a decreasing function of abundance relative to annual carrying capacity, and annual carrying capacity is a function of environmental covariates")
+)
+kable(df, escape = FALSE, format = "pandoc") |>
+  kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+# summary_tbl |>
+#   format_bayes_summary_tbl() |>
+#   datatable(filter = "top", rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
+```
+
+# Model Explorer
+
+```{r}
+#| output: asis
+
+# --- one-time CSS + JS for the model dropdown selector -----------------------------------
+cat('
+<style>
+.model-select-bar { margin-bottom: 1.25rem; }
+.model-select-bar label { font-weight: 600; margin-right: 0.5rem; color: #fff; }
+.model-select-bar select {
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #666;
+  font-size: 0.95rem;
+  min-width: 200px;
+  color: #fff;
+  background-color: #2b3e50
+}
+.model-select-bar select option {
+  color: #000;
+}
+</style>
+<script>
+function showModelPanel(id) {
+  document.querySelectorAll(".model-panel").forEach(function(el) { el.style.display = "none"; });
+  var target = document.getElementById(id);
+  if (target) target.style.display = "block";
+}
+</script>
+')
+
+# --- dropdown: one <option> per model, short name only -----------------------------------
+select_options <- map_chr(seq_len(nrow(run_index)), function(i) {
+  panel_id <- paste0("model-panel-", i)
+  sprintf('<option value="%s">%s</option>', panel_id, run_index$mtype[i])
+})
+
+cat('<div class="model-select-bar">\n')
+cat('<label for="model-select">Model:</label>\n')
+cat('<select id="model-select" onchange="showModelPanel(this.value)">\n')
+cat(paste(select_options, collapse = "\n"), "\n")
+cat('</select>\n')
+cat('</div>\n\n')
+
+for (i in seq_len(nrow(run_index))) {
+
+  obj      <- run_index$data[[i]]
+  panel_id <- paste0("model-panel-", i)
+  display  <- if (i == 1) "block" else "none"
+
+  cat('<div id="', panel_id, '" class="model-panel" style="display:', display, ';">\n\n', sep = "")
+  cat("::: {.panel-tabset}\n\n")
+
+  cat("### Abundance\n\n")
+  cat("Total age 0+, 1+, and mature adult abundance estimates. Darker and lighter ribbons denote 50% and 95% credible intervals, respectively.\n\n")
+  print(safe_plot(bplot_abundance(obj), "Total abundance plot"))
+  cat("\n\n")
+
+  cat("### Survival\n\n")
+  cat("Estimated survival rate by feeding ground over time. Dashed horizontal line indicates the baseline survival rate of 0.96.\n\n")
+  print(safe_plot(bplot_survival(obj), "Feeding-ground survival plot"))
+  cat("\n\n")
+
+  cat("### Mixing\n\n")
+  cat("Apportionment (mixing) of individuals between breeding and feeding grounds, showing median proportions for 2023. Width of ribbons is proportional to total estimated abundance within each breeding or feeding zone.\n\n")
+  print(safe_plot(bplot_mixing(obj), "Mixing alluvial plot"))
+  cat("\n\n")
+
+  cat("### Proportions\n\n")
+  cat("Data and model estimates of proportional mixing of humpback whales from breeding (winter) to feeding (summer) zones. Points show the proportion of whales from each breeding zone that migrate to a feeding zone, as estimated by the model (triangles) based on data from a genetic analysis (closed points) and a photo-identification mark-recapture analysis (open circles). Data are displayed with 95% confidence intervals, and model estimates with 95% credible intervals.\n\n")
+  print(safe_plot(bplot_proportions(obj, direction = "B-F"), "Breed-to-Feed proportions plot"))
+  cat("\n\n")
+
+  cat("### Mortality\n\n")
+  cat("Estimated annual mortality (numbers of individuals) in excess of the 0.04 baseline mortality rate for each feeding zone.\n\n")
+  print(safe_plot(bplot_mortality(obj, type = "raw"), "Mortality (raw) plot"))
+  cat("\n\n")
+  
+  cat("### Mortality rate\n\n")
+  cat("Estimated annual mortality rate, in excess of the 0.04 baseline mortality rate for each feeding zone.\n\n")
+  print(safe_plot(bplot_mortality(obj, type = "rate"), "Mortality (rate) plot"))
+  cat("\n\n")
+
+  cat("### Fixed Effects\n\n")
+  cat("Estimates for fixed effects in the model, with 95% credible intervals. Parameters are organized by category, including carrying capacity parameters for each breeding ground, initial depletion parameters, mixing parameters, and other parameters that include any additional variance, Beverton-Holt density-dependence parameters, and intrinsic growth rate.")
+  print(safe_plot(bplot_fixed_effects(obj), "Fixed effects plot"))
+  cat("\n\n")
+
+  cat(":::\n\n")
+  cat('</div>\n\n')
+}
+```
+
+# Compare Models
+
+All four fitted variants share the same stock structure and are compared directly.
+
+::: {.panel-tabset}
+
+### Abundance
+
+```{r}
+safe_plot(bplot_compare_abundance(objlist, scen.names), "Abundance comparison plot")
+```
+
+### Growth Rate (r)
+
+```{r}
+safe_plot(bplot_compare_r(objlist, scen.names), "r comparison plot")
+```
+
+### Carrying Capacity (K)
+
+```{r}
+safe_plot(bplot_compare_K(objlist, scen.names), "K comparison plot")
+```
+
+### Summary Table
+
+```{r}
+summary_tbl |>
+  dplyr::select(-subdir) |> 
+  format_bayes_summary_tbl() |>
+  datatable(rownames = FALSE, options = list(dom = "t", scrollX = TRUE))
+```
+
+:::
+
+# Model Description
+
+::: {.panel-tabset}
+
+### Base Dynamics
+
+The population dynamics model for the North Pacific humpback whales is an age-structured, sex-aggregated population dynamics model with multiple breeding stocks. Within the model, "herds" of whales have fidelity to a particular breeding and feeding ground combination. Each herd begins a model year on the breeding grounds, where direct removals on the breeding grounds are removed. Subsequently, on the feeding grounds, herds are subject to additional direct removals, as well as natural mortality (i.e., natural mortality is assumed to occur due to conditions on the feeding grounds, not the breeding grounds). Finally, at the end of the model year is when fecundity---and therefore next year's starting abundance---is calculated.
+
+The general form of the population dynamics is:
+$$
+N_{y+1,a}^{b,f} = \begin{cases} B_{y+1}^{b,f} & \text{if } a = 0 \\ \widetilde{N}_{y,a-1}^{b,f} S_{y,a-1}^{b,f} & \text{if } 0 < a < x \\ \widetilde{N}_{y,x-1}^{b,f} S_{y,x-1}^{b,f} + \widetilde{N}_{y,x}^{b,f} S_{y,x}^{b,f} & \text{if } a = x \end{cases}
+$$ {#eq-b1}
+
+where $N_{y,a}^{b,f}$ is the number at the start of year $y$ of age $a$ animals in the herd defined by breeding ground $b$ and feeding ground $f$, $S_{y,a}^{b,f}$ is their survival rate during year $y$, and $\widetilde{N}_{y,a}^{b,f}$ is the number after all removals during year $y$:
+
+$$
+\widetilde{N}_{y,a}^{b,f} = \widetilde{\widetilde{N}}_{y,a}^{b,f} \left( \widetilde{\widetilde{N}}_{y,0+}^{f} - C_y^f \right) / \widetilde{\widetilde{N}}_{y,0+}^{f}
+$$ {#eq-b2}
+
+where $C_y^f$ is removals from feeding ground $f$ in year $y$, and $\widetilde{\widetilde{N}}_{y,0+}^{f} = \sum_b \sum_a \widetilde{\widetilde{N}}_{y,a}^{b,f}$ is the total number of animals on feeding ground $f$ across herds and ages. The number of animals in each herd after breeding ground removals, but *before* feeding ground removals, is given by:
+
+$$
+\widetilde{\widetilde{N}}_{y,a}^{b,f} = N_{y,a}^{b,f} \left( N_{y,0+}^{b} - C_y^b \right) / N_{y,0+}^{b}
+$$ {#eq-b3}
+
+where $C_y^b$ is removals from breeding ground $b$ in year $y$, and $N_{y,0+}^b$ is the total abundance of breeding stock $b$ at the start of year $y$, ${{N}}_{y,0+}^{b} = \sum_f \sum_a {{N}}_{y,a}^{b,f}$.
+
+In the base version of the model, fecundity depends on the density of whales on the feeding grounds. The number of births for each herd, $B_y^{b,f}$, is determined by
+$$
+B_y^{b,f} = 0.5 \, f_y^f \, N_y^{b,f}
+$$ {#eq-b4}
+
+where $f_y^f$ is the fecundity for animals in feeding ground $f$. Fecundity varies between a minimum and maximum value,
+$$
+f_y^f = f_0 - (f_{\max} - f_0)\!\left(1 - \frac{N_{y,1+}^f}{K_{1+}^f}\right)
+$$ {#eq-b5}
+
+where $f_0$ is fecundity at carrying capacity, $f_{\max}$ is fecundity in the limit of zero population size, $K_{1+}^f$ is the age 1+ carrying capacity for feeding ground $f$, and $N_{y,1+}^f = \sum_b \sum_{a>0} \widetilde{\widetilde{N}}_{y,a}^{b,f}$. $f_0$ is determined from @eq-b1 under unfished equilibrium conditions, and $f_{\max}$ is calculated from a reparameterized version of the Lotka equation [@zerbini2010]:
+$$
+f_{\max} = \frac{(1 + r_{\max})^{L+1} - S_A(1 + r_{\max})^L}{S_A^L S_C}
+$$ {#eq-b6}
+
+where $r_{\max}$ is the maximum rate of increase and $L$ is age-at-maturity. $S_C$ and $S_A$ are base-case survival for age 0 and age 1+ humpbacks, respectively.
+
+Annual survival is a key quantity of interest in this study. In the base version of the model, survival is given by:
+$$
+S_{y,a}^{b,f} = \begin{cases} \dfrac{1}{1 + \exp\!\left(\varphi_C + \varepsilon_y^f\right)} & \text{(calves, } a = 0\text{)} \\[10pt] \dfrac{1}{1 + \exp\!\left(\varphi_A + \varepsilon_y^f\right)} & \text{(adults, } a > 0\text{)} \end{cases}
+$$ {#eq-b7a}
+$$
+\varphi_C = \ln\!\left(\frac{1}{S_C} - 1\right); \qquad \varphi_A = \ln\!\left(\frac{1}{S_A} - 1\right)
+$$ {#eq-b7b}
+
+where $\varepsilon_y^f$ is the survival deviation for feeding ground $f$ in year $y$.
+
+Initial conditions for each herd are determined by the total abundance at the start of the first model year, assuming an equilibrium population structure relative to $S_A$ and $S_C$
+
+### Mortality attribution
+
+The population model tracks annual survival, and therefore also tracks mortality. In addition, we are interested in estimating the contribution of natural mortality to total mortality, relative to the effect of direct removals. Specifically, we want to track "excess" realized mortality due to survival deviating below its baseline value $S_A$ for animals of breeding ground $b$ that migrate to feeding ground $f$. To estimate this excess mortality, we calculate, for each year, the difference between realized mortality of age 1+ whales (including the effect of any annual deviations) and a counterfactual scenario where survival is fixed at its baseline value $S_A$:
+
+$$
+M_y^{b,f} = \begin{cases} (S_{y,1+}^{b,f}-S_A)N_{y,1+}^{b,f} & \text{if } S_{y,1+}^{b,f} < S_A \\ 0 & \text{if } S_{y,1+}^{b,f} >= S_A \end{cases}
+$$ {#eq-mort}
+
+We can then compare these $M_y^{b,f}$ values to $C_y^b$ and $C_y^f$, and can track $\sum_b\sum_fM_y^{b,f}$ cumulatively across time to obtain an estimate of total excess mortality across the modeled period.
+
+### Model Variations
+
+A main objective of our analysis was to evaluate evidence for alternative specifications of annual survival, as well as to determine whether environmental data can help improve our estimation of survival. Therefore, we created four models, representing different hypotheses for how environmental variability affects humpback populations (with model shorthand in **bold**).
+
+The base version of the model calculates survival according to @eq-b7a, with annual survival $\varepsilon_y^f$ specified as random normal deviates.
+$$
+\varepsilon_y^f \sim \mathcal{N}(0, \sigma_{\varepsilon}^2)
+$$ {#eq-b8}
+We call this the random-survival (**rS**) model.
+
+In the environment-survival (**envS**) model, we introduce environmental influences on survival by representing $\varepsilon_y^f$ as a function of environmental covariates:
+$$
+\boldsymbol{\omega^f} \Upsilon_y^f + \epsilon_y^f
+$$ {#eq-b11}
+
+where  $\boldsymbol{\omega^f}$ is a vector of coefficients for the environmental covariates derived for feeding ground $f$, $\Upsilon_y^f$ is a vector of environmental covariate data for feeding ground $f$ in year $y$, and together $\boldsymbol{\omega^f} \Upsilon_y^f$ is our environmental index of survival. $\epsilon_y^f \sim \mathcal{N}(0, \sigma_{\epsilon}^2)$ is the remaining (unexplained) variation in survival. Realized survival is then calculated using @eq-b7a, meaning that in the **rS** model, larger values of the environmental index correspond to an increasingly negative effect on survival.
+
+Alternatively, annual survival plausibly could be due to density-dependence only, with no other deviations, environmentally-driven or otherwise. In the density-dependence only model (**ddOnly**), deviations in annual survival are driven by Beverton-Holt density-dependence with respect to an estimated carrying capacity $K^f$ for each humpback feeding ground, and we replace @eq-b7a with,
+  
+$$
+S_{y,a}^{b,f} = \begin{cases} \dfrac{S_C}{1 + \alpha_S(\frac{N_{y,1+}^f}{K_{1+}^f})} & \text{(calves, } a = 0\text{)} \\[10pt] \dfrac{S_A}{1 + \alpha_S(\frac{N_{y,1+}^f}{K_{1+}^f})} & \text{(adults, } a = 1+\text{)} \end{cases}
+$$ {#eq-b9}
+where $\alpha_S$ represents the strength of density-dependence in survival. In this model (and the **envK** model described below), we estimate a similar density-dependence for fecundity, replacing @eq-b6 with the following:
+$$
+f_y^f = \dfrac{f_{max}}{1 + \beta_S(\frac{N_{y,1+}^f}{K_{1+}^f})}
+$$ {#eq-b10}
+
+where $\beta_S$ represents the strength of density-dependence in fecundity.
+
+Finally, it is possible that environmental variation could engender changes in carrying capacity rather than having a direct effect on survival. Our environment-K (**envK**) model is based on the formulation @stewart2023 used for understanding changes in gray whale survival. In the **envK** model, we introduce time-varying carrying capacity for each feeding ground:
+$$
+K_y^f = \bar{K^f}exp(\boldsymbol{\omega^f} \Upsilon_y^f + \epsilon_y^f)
+$$ {#eq-b12}
+where $\bar{K^f}$ is the estimate of long term mean carrying capacity for feeding ground $f$, and the environmental index is defined as in @eq-b11 with $\epsilon_y^f \sim \mathcal{N}(0, \sigma_{K}^2)$. The **envK** model then uses @eq-b9 and @eq-b10 to calculate survival and fecundity, respectively.
+
+We tested how well each model variation characterized time-varying survival by examining estimates of the uncertainty. Specifically, we compared posterior distributions of the parameter indicating residual survival uncertainty, or the scale of unexplained variation in survival, in the random-survival ($\sigma_{\varepsilon}^2$, @eq-b8), environment-survival ($\sigma_{\epsilon}^2$,@eq-b11) and environment-K ($\sigma_{K}^2$,@eq-b12) models.
+
+### Environmental variable selection
+
+We used a variable selection process to select which combination of the five environmental covariates resulted in the most parsimonious model, balancing model fit with model complexity (number of parameters). We fit the model (see below) for every possible combination of the five environmental covariates, excluding models with both chlorophyll and net primary production, as they were highly collinear in all feeding zones ($\rho>0.80$). From among candidate models ($n$=23), we selected the set of covariates that minimized the value $2P-2\Gamma$, where $P$ is the number of environmental parameters (one per feeding ground per environmental covariate) and $\Gamma$ is the summed log likelihood of the survival deviates given $\sigma_{\varepsilon}^2$. To retain comparability among models, we performed this selection exercise with the **envS** model, then used the selected variables to fit the **envK** model.
+
+
+### Observation Model
+
+Generically, the observations of absolute abundance described above are linked to the population model as:
+$$
+n_y \sim \mathcal{N}(N_y, \sigma_{n_y})
+$$ {#eq-b13}
+where $n_y$ is an estimate of abundance (i.e., observation) in year $y$ with standard deviation $\sigma_{n_y}$ (Table SX). Each estimate is normally distributed with mean $N_y$ the model-estimated abundance. We use this generic form for abundance estimates linked to different age groups (age-0+ or age-1+), and for observations collected on breeding or feeding grounds (i.e., $N_y$ in @eq-b13 can represent total abundance $N_y$, breeding ground abundance $N_y^b$, or feeding ground abundance $\widetilde{N}_{y}^{f}$).
+
+The observations of relative abundance are represented in a similar way,
+$$
+n_y \sim \mathcal{N}(q_xN_y, \sigma_{n_y})
+$$ {#eq-b14}
+
+where $q_x$ is the constant of proportionality (i.e., survey bias) associated with the relative index of abundance that scales each survey $x$ from relative to absolute. Maximum likelihood values of $q_x$ are calculated analytically in the model.
+
+The proportion of breeding ground $b$ animals that migrate to feeding ground $f$ in year $y$ is:
+$$
+\rho_y^{b,f} = N_{y,1+}^{b,f}/N_{y,1+}^b
+$$ {#eq-b15}
+with a similar calculation for the reverse migration from feeding to breeding grounds. These proportions together form the mixing estimates---both forward and reverse apportionment of animals between breeding and feeding grounds. The mixing estimates are assumed to be Dirichlet-distributed based on the observations from both mixing datasets (genetics and mark-recapture).
+
+*need to finish this and explain the Dirichlet calculation and sample size*
+
+Note that in the model, removals are fixed (i.e., we use the removals data in the model, but they do not enter the observation model). This decision was made to improve identifiability and reduce the total number of estimated parameters.
+
+### Estimation
+
+The key estimated parameters in the model include maximum growth rate $r_{max}$, carrying capacity for each breeding ground $K^b$, the relative depletion of each stock at the beginning of the modeled period $N_{y=0}^b/K^b$, the mixing proportions, the annual survival deviations $\varepsilon_y^f$ (or carrying capacity deviations in the case of the **envK** model), the Beverton-Holt density-dependence parameters for the **ddOnly** and **envK** models, and the coefficients of the environmental index $\boldsymbol{\omega^f}$.  In addition, the sampling coefficients of variation reported in the data appear to be very low for three of the observed time series of abundance, so we introduce additional variance parameters for estimates of absolute abundance for the SBC+WA and OR+CA feeding grounds and the relative index of abundance for the GOA feeding ground. Vague or flat priors were used for all parameters.
+
+*maybe more about priors*.
+
+Because of a sparsity of abundance data for the RUS+WAL zone, the models could not estimate time-varying survival for that zone. Furthermore, for the **envK** model, we estimate time-varying carrying capacity for the Alaska zones only (EAL+BER, GOA, and SEA+NBC). All other zones in the **envK** model are subject to Beverton-Holt density-dependence only.
+
+The model is written in *RTMB* [@rtmb] but passed to Stan for Bayesian MCMC sampling using *rstan* and *tmbstan* [@rstan;@tmbstan]. We ran each of the four models (**rS, ddOnly**, **envS**, and **envK**) with four chains of 10,000 iterations each. We used standard diagnostics to assess model convergence. Specifically, we visually inspected trace plots for adequate chain mixing, ensured that the model did not have divergent transitions, that each estimated parameter had an effective sample size >1500 for all fitted parameters, and that the Gelman-Rubin convergence diagnostic (R-hat) was less than 1.01. Model fit was assessed based on the fits to the various indices of abundance.
+
+:::

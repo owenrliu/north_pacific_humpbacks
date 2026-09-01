@@ -1,3 +1,66 @@
+# ========================================================================================================================
+# BUILD RTMB PARAMETERS
+# ========================================================================================================================
+build_env_survival_parameters <- function(base_params, epsEnv, log_sigmaEnv, envParams) {
+  #' Add environment-driven survival parameters for env-survival model
+  #'
+  #' The env-survival model:
+  #'   - Drives survival DIRECTLY with environmental covariates
+  #'   - Estimates coefficients relating environment to survival (envParams)
+  #'   - Includes environmental random effect (epsEnv)
+  #'   - Estimates variance of environmental effect (log_sigmaEnv)
+  #'   - NO density dependence (unlike ddOnly and env-K)
+  #'
+  #' Parameter interpretation:
+  #'   - epsEnv: Year-to-year variation in environmental index (length Nyears)
+  #'   - log_sigmaEnv: log-scale SD of environmental variation
+  #'   - envParams: Coefficients relating each env covariate to survival in each feeding ground
+
+  #' @param base_params List from build_base_parameters()
+  #' @param epsEnv Environmental random effect (typically zeros initially)
+  #' @param log_sigmaEnv log-scale SD of environmental effect
+  #' @param envParams Coefficients for each environment variable × feeding ground
+  #'
+  #' @return Parameter list with environment-survival model additions
+
+  params <- base_params
+  
+  # Environmental effect in survival
+  params$epsEnv <- epsEnv
+  params$log_sigmaEnv <- log_sigmaEnv
+  
+  # Coefficients relating environment to survival
+  params$envParams <- envParams
+  
+  params
+}
+# ========================================================================================================================
+# BUILD RTMB MAP
+# ========================================================================================================================
+build_env_survival_map <- function(base_map, AddCV = FALSE) {
+  #' Build the RTMB map constraints for env-survival model
+  #'
+  #' The env-survival model estimates:
+  #'   - epsEnv: Environmental random effect (treated as random, not in map)
+  #'   - log_sigmaEnv: Variance of environmental effect (ESTIMATED)
+  #'   - envParams: Environmental coefficients (ESTIMATED - this is key!)
+  
+  #' @param base_map List from build_base_map()
+  #' @param AddCV Logical, whether additional variance is being estimated
+  #'
+  #' @return List of factor() constraints
+  
+  map <- base_map
+  
+  if (!AddCV) {
+    map$AddV <- rep(factor(NA), 1)
+  }
+  
+  map
+}
+# ========================================================================================================================
+# K PRIOR HELPER FUNCTION
+# ========================================================================================================================
 calcKPrior <- function(Kmax){
   
   Ks <- seq(from=0,to=3*Kmax,length=100)
@@ -16,8 +79,9 @@ calcKPrior <- function(Kmax){
   KPriors
 }
 
-# BASELINE HUMPBACK ASSESSMENT MODEL - NO ENVIRONMENTAL COVARIATES
-# ========================================================================================
+# ========================================================================================================================
+# MAIN MODEL FUNCTION
+# ========================================================================================================================
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
 f <- function(parms,dat)
  {

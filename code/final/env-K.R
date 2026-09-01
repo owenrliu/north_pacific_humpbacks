@@ -1,3 +1,96 @@
+# ========================================================================================================================
+# BUILD RTMB PARAMETERS
+# ========================================================================================================================
+build_env_K_parameters <- function(base_params, SFdev, Kdev, log_Ksigma,
+                                   log_alphaK, log_betaK, envParams) {
+  #' Add environment-driven K parameters for env-K model
+  #'
+  #' The env-K (Environment-driven Carrying Capacity) model:
+  #'   - Drives CARRYING CAPACITY (K) with environmental covariates
+  #'   - Estimates coefficients relating environment to K (envParams)
+  #'   - Allows K deviations around environmental trend (Kdev)
+  #'   - Includes density-dependent survival (alphaK, betaK)
+  #'   - NO survival deviations (DD controls survival, not random variation)
+  #'
+  #' Parameter interpretation:
+  #'   - Kdev: Deviations of feeding ground K from environmental trend
+  #'   - log_Ksigma: log-scale variance of K deviations
+  #'   - envParams: Coefficients relating environment covariates to K
+  #'   - log_alphaK: DD strength in fecundity
+  #'   - log_betaK: DD strength in survival
+  #'   - SFdev: Survival deviations (included for compatibility, will be fixed)
+  #'
+  #' @param base_params List from build_base_parameters()
+  #' @param SFdev Survival dev matrix (will be fixed to NA)
+  #' @param Kdev Carrying capacity deviations (Nfeed × Nyears)
+  #' @param log_Ksigma log-scale variance of K deviations
+  #' @param log_alphaK log-scale DD strength in fecundity
+  #' @param log_betaK log-scale DD strength in survival
+  #' @param envParams Coefficients for environment effects on K
+  #'
+  #' @return Parameter list for env-K model
+
+  params <- base_params
+  
+  # Survival deviations (included for compatibility, but will be fixed)
+  params$SFdev <- SFdev
+  
+  # Carrying capacity drivers
+  params$Kdev <- Kdev
+  params$log_Ksigma <- log_Ksigma
+  
+  # Density-dependent parameters
+  params$log_alphaK <- log_alphaK
+  params$log_betaK <- log_betaK
+  
+  # Environmental effects on K
+  params$envParams <- envParams
+  
+  params
+}
+
+# ========================================================================================================================
+# BUILD RTMB MAP
+# ========================================================================================================================
+build_env_K_map <- function(base_map, SFdev, envParams = NULL, AddCV = FALSE) {
+  #' Build map constraints for env-K model
+  #'
+  #' The env-K model FIXES:
+  #'   - SFdev: Survival deviations fixed (DD controls survival)
+  #'
+  #' The env-K model ESTIMATES:
+  #'   - envParams: Environmental effects on K
+  #'   - Kdev: K deviations around environmental trend
+  #'   - log_Ksigma: Variance of K deviations
+  #'   - log_alphaK, log_betaK: DD strength
+  #'
+  #' @param base_map List from build_base_map()
+  #' @param SFdev Survival dev matrix (for length)
+  #' @param envParams Environment parameters (unused, for consistency)
+  #' @param AddCV Logical
+  #'
+  #' @return List of factor() constraints
+  
+  map <- base_map
+  
+  # Fix survival deviations (DD controls survival, environment controls K)
+  map$SFdev <- rep(factor(NA), length(SFdev))
+  
+  if (!AddCV) {
+    map$AddV <- rep(factor(NA), 1)
+  }
+  
+  # Estimate everything else:
+  #   - envParams: Environmental coefficients on K
+  #   - Kdev: K deviations
+  #   - log_Ksigma: Variance of K deviations
+  #   - log_alphaK, log_betaK: DD parameters
+  
+  map
+}
+# ========================================================================================================================
+# K PRIOR HELPER FUNCTION
+# ========================================================================================================================
 calcKPrior <- function(Kmax){
   
   Ks <- seq(from=0,to=3*Kmax,length=100)
@@ -24,8 +117,9 @@ calcf0 <- function(SA,SC,Amat){
   f0 <- 2*(1.0-SA)/(SC*SA^(Amat))
   f0
 }
-# MODEL
-# ========================================================================================
+# ========================================================================================================================
+# MAIN MODEL FUNCTION
+# ========================================================================================================================
 cmb <- function(f, d) function(p) f(p, d) # combine objective function with specific data
 f <- function(parms,dat)
  {

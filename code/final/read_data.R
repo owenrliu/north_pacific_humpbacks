@@ -69,7 +69,7 @@ ReadCatches <- function(DatFile, BreedingOpt, FeedingOpt, Nbreed, Nfeed, BreedNa
 # Function to read the humpback survey data
 ReadSurveyData <- function(Code, BreedingOpt, FeedingOpt, BreedNames, FeedNames, Yr1, Yr2, FullDiag, SensTest = "") {
   
-  Surveys <- read.csv(here("data", "survey_data_updated_01_2026.csv"), fill = T, comment.char = "?", header = T, row.names = NULL)[, 1:13]
+  Surveys <- read.csv(here("data", "survey_data_updated_04_2026_B2bF1.csv"), fill = T, comment.char = "?", header = T, row.names = NULL)[, 1:13]
   colnames <- c("Year1", "Year2", "Estimate", "CV", "Area", "Rel", "Use", "Add.cv", "Hypothesis", "Class", "SensUse", "Component", "Reference")
   colnames(Surveys) <- colnames
   # print(head(Surveys))
@@ -157,7 +157,7 @@ ReadMixingData <- function(Code, DatFile, Yr1, Yr2, Nbreed, Nfeed, BreedNames, F
 
   # Read in mixing data
   MixFile1 <- read.csv(here("data", "Genetics_mixing_data_allscenarios_table_Long.csv"))
-  MixFile2 <- read.csv(here("data", "Mark-Recapture_mixing_data_allscenarios_table_Long.csv"))
+  MixFile2 <- read.csv(here("data", "Mark-Recapture_mixing_data_allscenarios_table_Long_B2bF1.csv"))
   MixFile <- rbind(MixFile1, MixFile2)
   Index <- which(MixFile$Hypothesis == Code)
   MixFile <- MixFile[Index, ]
@@ -412,6 +412,26 @@ ReadMOM6 <- function(DatFile, FeedingOpt, YrStart = 2000, YrEnd = 2024,type,lag,
 }
 
 # =================================Build Final Data=========================================
+# Convenience functions for building RTMB parameters and constraints
+build_base_parameters <- function(Nbreed, MixPars, AddV) {
+  list(
+    rval = 0.09,
+    logK = rep(log(20000), Nbreed),
+    logBK = rep(3, Nbreed),
+    InfluxP = 10,
+    inert_par = 0,
+    MixPars = MixPars,
+    AddV = AddV
+  )
+}
+
+build_base_map <- function() {
+  list(
+    InfluxP = factor(NA),
+    inert_par = factor(NA)
+  )
+}
+
 # Function to make a data list for a specific user-designated scenario
 # Parameter definitions and defaults provided in the run script "run_humpback_assessment"
 MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
@@ -442,7 +462,7 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   Years <- Yr1:(Yr2 + 1)
   Nyear <- length(Years)
   which_year_feedbreed <- which(DatFile[, 2] == "Year_for_feeding_to_breeding")
-  YearFeedBreed <- as.numeric(DatFile[which_year_feedbreed + 1, 1]) - Yr1 + 1 # note: where does this get used??
+  YearFeedBreed <- as.numeric(DatFile[which_year_feedbreed + 1, 1]) - Yr1 + 1 # note: gets used for calculate predicted mixing
   which_dirichlet <- which(DatFile[, 2] == "Dirichlet_(1)_or_normal_(0)")
   Idirichlet <- as.numeric(DatFile[which_dirichlet + 1, 1])
 
@@ -627,77 +647,64 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
   AddV <- rep(0, NextraCV)
 
   # ==================================Parameter List====================================================
-  ## List of parameters for TMB to estimate
+  # ---- Step 1: Build common parameter base ----
+  # These parameters are used by ALL model variants
   parameters <- list(
-    rval = 0.09, # Maximum growth rate
-    logK = rep(log(20000), Nbreed), # Breeding ground K
-    logBK = rep(3, Nbreed), # Relative depletion of each breeding stock
-    InfluxP = 10, # Transfer influx (?)
-    inert_par = 0, # related to fecundity calculation
-    MixPars = MixPars, # parameters of the mixing matrix
-    AddV = AddV # additional variance parameters for three time-series
+    rval = 0.09,                           # Maximum growth rate
+    logK = rep(log(20000), Nbreed),        # Breeding ground K
+    logBK = rep(3, Nbreed),                # Relative depletion of each breeding stock
+    InfluxP = 10,                          # Transfer influx
+    inert_par = 0,                         # Related to fecundity calculation
+    MixPars = MixPars,                     # Mixing matrix parameters
+    AddV = AddV                            # Additional variance parameters
   )
-  # If designating survival deviates as a random effect, no environment
+  
+  # ---- Step 2: Add model-specific parameters ----
+  
   if (envOpt == "rS") {
-    parameters$SFdev <- SFdev
-    parameters$log_SFsigma <- log_SFsigma
+    # Recruitment-Survival model: estimate survival deviations
+    parameters <- build_rS_parameters(parameters, SFdev, log_SFsigma)
+    
+  } else if (envOpt == "env-survival") {
+    # Environment drives survival directly
+    parameters <- build_env_survival_parameters(parameters, epsEnv, log_sigmaEnv, envParams)
+    
+  } else if (envOpt == "ddOnly") {
+    # Density-dependence only (no environment)
+    parameters <- build_ddOnly_parameters(parameters, SFdev, Kdev, log_Ksigma,
+                                          log_alphaK, log_betaK, envParams)
+    
+  } else if (envOpt == "env-K") {
+    # Environment drives carrying capacity
+    parameters <- build_env_K_parameters(parameters, SFdev, Kdev, log_Ksigma,
+                                         log_alphaK, log_betaK, envParams)
+  } else {
+    stop("Unknown model variant: ", envOpt, 
+         ". Must be one of: rS, env-survival, ddOnly, env-K")
   }
-  # If driving survival directly with environment, use omegas
-  if (envOpt == "env-survival"){
-    parameters$epsEnv = epsEnv # normal random error in environmental index of survival
-    parameters$log_sigmaEnv = log_sigmaEnv # SD of epsEnv
-    # if linear:
-    parameters$envParams <- envParams
-    # if polynomial:
-    # parameters$betaPoly <- betaPoly
-    # parameters$log_sigmaPoly <- log_sigmaPoly
-    # if splines:
-    # parameters$beta_splines = beta_splines # coefficients for env splines
-    # parameters$logsigma_splines = log(sigma_splines) # spline SD
-    # parameters$loglambda_splines = log(lambda_splines) # spline SD
-  }
-  # If density-dependent survival, but no K or S Devs
-  if (envOpt == "ddOnly") {
-    parameters$SFdev = SFdev
-    parameters$Kdev = Kdev # carrying capacity devs, feeding grounds
-    parameters$log_Ksigma = log_Ksigma #carrying capacity variance, for varying K
-    parameters$log_alphaK = log_alphaK # strength of density-dependence in fecundity
-    parameters$log_betaK = log_betaK # strength of density-dependence in survival 
-    parameters$envParams <- envParams
-  }
-  # If driving variable K as a random effect with environment, with density-dependent survival
-  if (envOpt == "env-K") {
-    parameters$SFdev = SFdev
-    parameters$Kdev = Kdev # carrying capacity devs, feeding grounds
-    parameters$log_Ksigma = log_Ksigma #carrying capacity variance, for varying K
-    parameters$log_alphaK = log_alphaK # strength of density-dependence in fecundity
-    parameters$log_betaK = log_betaK # strength of density-dependence in survival 
-    parameters$envParams <- envParams
-    # parameters$logBKsigma = logBKsigma # sd of initial depletion RE
-  }
-
-  # ==================================Fixing Parameters====================================================
-  # factor(NA) means DON'T ESTIMATE THIS, USE FIXED PARAM
-  # These will go into estimation at their INITIAL VALUES and will not change
-  mapUse <- list( # rval=factor(NA),#logBK=rep(factor(NA),Nbreed),
+  
+  # ---- Step 3: Build map of RTMB constraints ----
+  # Parameters that are fixed for ALL models
+  mapUse <- list(
     InfluxP = factor(NA),
     inert_par = factor(NA)
   )
-  if(envOpt=="env-K"){
-    mapUse$SFdev = rep(factor(NA), length(SFdev))
-    # for testing...
-    # mapUse$log_Ksigma = factor(NA)
-    # mapUse$log_betaK = factor(NA)
+  
+  # ---- Step 4: Add model-specific map constraints ----
+  # These determine which parameters are NOT estimated
+  
+  if (envOpt == "rS") {
+    mapUse <- build_rS_map(mapUse, AddCV = AddCV)
+    
+  } else if (envOpt == "env-survival") {
+    mapUse <- build_env_survival_map(mapUse, AddCV = AddCV)
+    
+  } else if (envOpt == "ddOnly") {
+    mapUse <- build_ddOnly_map(mapUse, SFdev, Kdev, envParams, AddCV = AddCV)
+    
+  } else if (envOpt == "env-K") {
+    mapUse <- build_env_K_map(mapUse, SFdev, envParams, AddCV = AddCV)
   }
-  if(envOpt=="ddOnly"){ 
-    mapUse$envParams <- rep(factor(NA),length(envParams))
-    mapUse$Kdev = rep(factor(NA),length(Kdev)) # carrying capacity devs, feeding grounds
-    mapUse$log_Ksigma = factor(NA) #carrying capacity variance, for varying K
-    mapUse$SFdev = rep(factor(NA), length(SFdev))
-    # mapUse$logBK <- factor(rep(NA,Nbreed))
-  }
-  if (AddCV == F) mapUse$AddV <- rep(factor(NA), length(AddV))
-
   # ==================================Output====================================================
   # Return a big list of data for the model
   datout <- list(
