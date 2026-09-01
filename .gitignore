@@ -5,3 +5,5 @@
 *Bayes.rds
 *TMB.rds
 data/
+.positai
+*BayesOut.rds
