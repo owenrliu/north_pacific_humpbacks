@@ -1,0 +1,555 @@
+---
+title: "Supplementary Figures"
+format: html
+editor: source
+---
+
+## Random-survival
+
+### Key parameters
+```{r}
+#| label: fig-rSFE
+#| fig-cap: "Parameter estimates for the rS model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-rStotabun
+#| fig-cap: "Total abundance in the rS model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-rSbreedabun
+#| fig-cap: "Breeding abundance in the rS model."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-rSfeedabun
+#| fig-cap: "Feeding abundance in the rS model."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-rSmix
+#| fig-cap: "Estimates of mixing in the rS model."
+# 
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-rSfeedprop
+#| fig-cap: "Feeding to breeding proportions in the rS model."
+
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-rSbreedprop
+#| fig-cap: "Breeding to feeding proportions in the rS model."
+
+# knitr::include_graphics(here('plots','final','rS Bayes test','Bayes proportions breed to feed.png'))
+```
+### Survival
+
+```{r}
+#| label: fig-rSsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the rS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes feed survival.png'))
+```
+
+### Mortality
+```{r}
+#| label: fig-rSmort
+#| fig-cap: "Estimated excess mortality by herd for the rS model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-rStotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-rStotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Same data as @fig-rStotrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-rStotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the rS model. Same data as @fig-rStotrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-rSbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by breeding ground. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-rSbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the rS model, by breeding ground. Same data as @fig-rSbreedrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-rSbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by breeding ground. Same data as @fig-rSbreedrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-rSfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeding ground. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-rSfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeeding ground. Same data as @fig-rSfeedrelmortraw, but expressed as an annual rate relative to overall population size. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-rSfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the rS model, by feeding ground. Same data as @fig-rSfeedrelmortraw, but expressed as a cumulative total number of individuals. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','rS Bayes test','Bayes relmort feed cume.png'))
+```
+
+## Environment-survival
+
+### Key parameters
+```{r}
+#| label: fig-envSFE
+#| fig-cap: "Parameter estimates for the envS model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-envStotabun
+#| fig-cap: "Total abundance in the envS model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-envSbreedabun
+#| fig-cap: "Breeding abundance in the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-envSfeedabun
+#| fig-cap: "Feeding abundance in the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-envSmix
+#| fig-cap: "Estimates of mixing in the envS model."
+# 
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-envSfeedprop
+#| fig-cap: "Feeding to breeding proportions in the envS model."
+
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-envSbreedprop
+#| fig-cap: "Breeding to feeding proportions in the envS model."
+
+# knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-envSsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the envS model. Lines represent median estimates, while the dark ribbons indicate a 50% credible interval and the light ribbons indicate the 95% credible interval."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes feed survival.png'))
+```
+```{r}
+#| label: fig-envSsurvInd
+#| fig-cap: "Environmental index of survival for the envS model. The panels show (clockwise from top left) the coefficient estimates for environmental variables for each zone; the index of survival calculated from these coefficients; the remaining variation in survival ($\\sigma_{\\varepsilon}^2$ in @eq-b8); the realized survival rate; and posterior draws from the model showing the relationship between the environmental index and survival, where the solid line traces the assumed relationship from @eq-b7a."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes envir index.png'))
+```
+### Mortality
+```{r}
+#| label: fig-envSmort
+#| fig-cap: "Estimated excess mortality by herd for the envS model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-envStotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-envStotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model. Same data as @fig-envStotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-envStotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envS model. Same data as @fig-envStotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-envSbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-envSbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the envS model, by breeding ground. Same data as @fig-envSbreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-envSbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by breeding ground. Same data as @fig-envSbreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-envSfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-envSfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeeding ground. Same data as @fig-envSfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-envSfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envS model, by feeding ground. Same data as @fig-envSfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-survival Bayes','Bayes relmort feed cume.png'))
+```
+
+## Density-dependence only
+
+### Key parameters
+```{r}
+#| label: fig-ddOnlyFE
+#| fig-cap: "Parameter estimates for the ddOnly model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-ddOnlytotabun
+#| fig-cap: "Total abundance in the ddOnly model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-ddOnlybreedabun
+#| fig-cap: "Breeding abundance in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-ddOnlyfeedabun
+#| fig-cap: "Feeding abundance in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+
+*coming soon*
+```{r}
+#| label: fig-ddOnlymix
+#| fig-cap: "Estimates of mixing in the ddOnly model."
+# 
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedprop
+#| fig-cap: "Feeding to breeding proportions in the ddOnly model."
+
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedprop
+#| fig-cap: "Breeding to feeding proportions in the ddOnly model."
+
+# knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-ddOnlysurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes feed survival.png'))
+```
+
+### Mortality
+```{r}
+#| label: fig-ddOnlymort
+#| fig-cap: "Estimated excess mortality by herd for the ddOnly model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-ddOnlytotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-ddOnlytotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model. Same data as @fig-ddOnlytotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total rate.png'))
+```
+```{r}
+#| label: fig-ddOnlytotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the ddOnly model. Same data as @fig-ddOnlytotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-ddOnlybreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the ddOnly model, by breeding ground. Same data as @fig-ddOnlybreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-ddOnlybreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by breeding ground. Same data as @fig-ddOnlybreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-ddOnlyfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeeding ground. Same data as @fig-ddOnlyfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-ddOnlyfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the ddOnly model, by feeding ground. Same data as @fig-ddOnlyfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','ddOnly Bayes','Bayes relmort feed cume.png'))
+```
+
+## Environment-K
+
+### Key parameters
+```{r}
+#| label: fig-envKFE
+#| fig-cap: "Parameter estimates for the envK model. Parameter estimates are organized by category, and include carrying capacity parameters, initial depletion parameters, and mixing parameters. Other parameters include maximum growth rate $r_{max}$, the log variability in annual survival $\\sigma_\\varepsilon^2$, and additional variance parameters for three of the abundance time series. Points are median estimates, while thick and thin bars indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes FEs.png'))
+```
+### Total abundance
+```{r}
+#| label: fig-envKtotabun
+#| fig-cap: "Total abundance in the envK model, by age component (age 0+, age 1+ or mature (8+)). Data points are the estimates of total abundance derived from Cheeseman et al. (2024)."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes total abundance.png'))
+```
+### Breeding ground abundance
+```{r}
+#| label: fig-envKbreedabun
+#| fig-cap: "Breeding abundance in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes breed abundance.png'))
+```
+### Feeding ground abundance
+```{r}
+#| label: fig-envKfeedabun
+#| fig-cap: "Feeding abundance in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes feed abundance.png'))
+```
+### Mixing
+```{r}
+#| label: fig-envKmix
+#| fig-cap: "Estimates of mixing in the envK model."
+# 
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes mixing.png'))
+```
+```{r}
+#| label: fig-envKfeedprop
+#| fig-cap: "Feeding to breeding proportions in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes proportions feed to breed.png'))
+```
+```{r}
+#| label: fig-envKbreedprop
+#| fig-cap: "Breeding to feeding proportions in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes proportions breed to feed.png'))
+```
+### Survival
+```{r}
+#| label: fig-envKsurv
+#| fig-cap: "Estimated annual survival on the feeding grounds in the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes feed survival.png'))
+```
+```{r}
+#| label: fig-envKsurvInd
+#| fig-cap: "Environmental index of survival for the envK model.The panels show (clockwise from top left) the fitted Beverton-Holt type relationship between depletion ($\\frac{N_y^f}{K^f}$) and survival; posterior draws from the model showing the relationship between the environmental index and carrying capacity, where brighter areas indicate a higher density of posterior samples; posterior draws from the model showing the relationship between the environmental index and survival; the realized survival rate; the remaining variation in survival (@eq-b12); and, the environmental index of time-varying K."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes envir index.png'))
+```
+### Mortality
+```{r}
+#| label: fig-envKmort
+#| fig-cap: "Estimated excess mortality by herd for the envK model. Values represent the estimated number of individuals from a particular breeding/feeding ground combination that died due to variations in natural survival, relative to a baseline survival of 0.96 (@eq-mort). Colored bars are median estimates, while gray bars are indicate the 97.5% quantile of the posterior estimates (i.e., the upper limit of the 95% credible interval)."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes mortality feed x breed.png'))
+```
+### Relative mortality
+Compare excess natural mortality to removals data.
+```{r}
+#| label: fig-envKtotrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total raw.png'))
+```
+```{r}
+#| label: fig-envKtotrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model. Same data as @fig-envKtotrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total rate.png'))
+```
+
+```{r}
+#| label: fig-envKtotrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals from the breeding and feeding grounds for the envK model. Same data as @fig-envKtotrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort total cume.png'))
+```
+
+```{r}
+#| label: fig-envKbreedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by breeding ground."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed raw.png'))
+```
+```{r}
+#| label: fig-envKbreedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals in the envK model, by breeding ground. Same data as @fig-envKbreedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed rate.png'))
+```
+```{r}
+#| label: fig-envKbreedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by breeding ground. Same data as @fig-envKbreedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort breed cume.png'))
+```
+
+```{r}
+#| label: fig-envKfeedrelmortraw
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeding ground."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed raw.png'))
+```
+```{r}
+#| label: fig-envKfeedrelmortrate
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeeding ground. Same data as @fig-envKfeedrelmortraw, but expressed as an annual rate relative to overall population size."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed rate.png'))
+```
+```{r}
+#| label: fig-envKfeedrelmortcume
+#| fig-cap: "Estimated excess mortality compared to removals for the envK model, by feeding ground. Same data as @fig-envKfeedrelmortraw, but expressed as a cumulative total number of individuals."
+
+knitr::include_graphics(here('plots','final','env-K Bayes','Bayes relmort feed cume.png'))
+```
+
+## Comparison
+
+### Variation in survival estimates
+We compared variance parameters $\sigma_{\varepsilon}^2$ (rS, @eq-b8), $\sigma_{\epsilon}^2$ (envS, @eq-b11), $\sigma_{K}^2$ (envK, @eq-b12) to determine whether informing the model with environmental covariates reduces our remaining uncertainty in survival.
+
+```{r}
+#| label: fig-sigmacomp
+#| fig-cap: "Posterior distributions of unexplained variablity in survival for the three models that estimate time-varying survival."
+
+knitr::include_graphics(here('plots','final','survival variability sigma comparison.png'))
+```
+### Growth rate
+```{r}
+#| label: fig-rcomp
+#| fig-cap: "Comparison of estimates of maximum growth rate $r_{max}$ by model type. Right panel shows the same data as the left, with the ddOnly model removed for visual clarity."
+
+knitr::include_graphics(here('plots','final','Bayes r comp.png'))
+```
+### Carrying capacity
+```{r}
+#| label: fig-Kcomp
+#| fig-cap: "Comparison of estimates of carrying capacity $K^b$ by breeding ground and model type. Points are median estimates, while thick and dotted lines indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','Bayes K comp.png'))
+```
+### Initial depletion
+```{r}
+#| label: fig-BKcomp
+#| fig-cap: "Comparison of estimates of initial depletion $\\frac{N_{y=0}^b}{K^b}$ by breeding ground and model type. Points are median estimates, while thick and dotted lines indicate 50% and 95% credible intervals, respectively."
+
+knitr::include_graphics(here('plots','final','Bayes BK comp.png'))
+```
+### Environmental variable selection
+```{r}
+#| label: fig-envSeledt
+#| fig-cap: "Model selection exercise for choosing appropriate environmental variables. The envS model was run with all possible combinations of the five candidate environmental variables (number of covariates increases with model number along the x-axis). For each model, we calculated the overall likelihood of the abundance data, the summed log likelihood of the survival deviates $\\Gamma$, the likelihood penalty, and an AIC-like score calculated as $2P-2\\Gamma$, where $P$ is the number of environmental parameters (one per feeding ground per environmental covariate)."
+
+knitr::include_graphics(here('plots','final','env-survival variable testing.png'))
+```
