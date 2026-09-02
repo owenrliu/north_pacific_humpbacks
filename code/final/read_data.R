@@ -678,6 +678,8 @@ MakeDataScenario <- function(Code, SensCase, StrayBase, DataFileName, Yr1, Yr2,
     # Environment drives carrying capacity
     parameters <- build_env_K_parameters(parameters, SFdev, Kdev, log_Ksigma,
                                          log_alphaK, log_betaK, envParams)
+  } else if (envOpt == "envS-rvec") {
+    parameters <- build_envS_rvec_parameters(parameters, epsEnv, log_sigmaEnv, envParams, Nfeed)
   } else {
     stop("Unknown model variant: ", envOpt, 
          ". Must be one of: rS, env-survival, ddOnly, env-K")

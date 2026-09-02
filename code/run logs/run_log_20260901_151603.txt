@@ -1,0 +1,18 @@
+Run Configuration Log
+Generated: 2026-09-01 15:16:03.951872
+
+Execution Summary
+--------------------------------------------------------------------------------
+Total runs: 1
+Successful: 1
+Failed: 0
+Total time: 0.4 minutes
+
+Run Details
+--------------------------------------------------------------------------------
+
+Run: ML_ddonly
+Description: Density-dependent only model (no env drivers), maximum likelihood
+Status: success
+Time: 0.4 min
+Config: env_opt=ddOnly, years=1970-2023, subdir=final/ml/ddOnly

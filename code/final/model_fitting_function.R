@@ -36,6 +36,7 @@ DoRun <- function(Code,SensCase,StrayBase=0,Nage=11,IAmat=8,SA=0.96,SC=0.8,TimeL
   if(envOpt== 'env-survival') source(here('code','final','env-survival.R'))
   if(envOpt== 'ddOnly') source(here('code','final','ddOnly.R'))
   if(envOpt== 'env-K') source(here('code','final','env-K.R'))
+  if(envOpt== 'envS-rvec') source(here('code','final','envS-rvec.R'))
   
   # =================================================================================================================================
   # Make Model Data

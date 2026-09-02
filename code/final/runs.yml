@@ -63,7 +63,7 @@ defaults:
   idirichlet: 1                             # Dirichlet variance for mixing proportions
   max_n: 100                                # Max iterations for optimization
   seed: 19101                               # Random seed for reproducibility
-  sf: [0, 1, 0, 1, 1, 1]                    # Selectivity flags (0=not estimated, 1=estimated)
+  sf: [0, 1, 0, 1, 1, 1]                    # Feeding grounds to estimate time-varying survival (0=not estimated, 1=estimated)
   
   # Output and diagnostics
   all_plots: true                           # Generate all standard plots?
@@ -116,8 +116,10 @@ runs:
     description: "Density-dependent only model (no env drivers), maximum likelihood"
     env_opt: "ddOnly"
     rvars: null
+    env_vars: null
     do_bayes: false
     all_plots: true
+    sf: [1, 1, 1, 1, 1, 1] 
     subdir: "final/ml/ddOnly"
   
   - name: "ML_env_k"
@@ -128,6 +130,17 @@ runs:
     do_bayes: false
     all_plots: true
     subdir: "final/ml/env-K"
+    
+  - name: "ML_rvec"
+    description: "env-survival with SST+MLD and varying rmax by feeding ground"
+    env_opt: "envS-rvec"
+    env_vars: ["sst", "mld"]
+    rvars: ["epsEnv"]
+    do_bayes: false
+    all_plots: true
+    subdir: "final/ml/envS-rvec"
+    yr2: 2023
+
 
   # ====== SENSITIVITY: YEARS ======
   
