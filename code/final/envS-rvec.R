@@ -496,10 +496,11 @@ f <- function(parms,dat)
   LogNf <- array(0,dim=c(3,Nfeed,Nyr+1));                                  # Feeding numbers
   for (Icomp in 1:3)
   {
-    LogNT[Icomp,] <- log(colSums(matrix(NfitFeed[Icomp,,], nrow=Nfeed)))
-    for (Ibreed in 1:Nbreed) LogNb[Icomp,Ibreed,] <- log(NfitBreed[Icomp,Ibreed,]);
-    for (Ifeed in 1:Nfeed) LogNf[Icomp,Ifeed,] <- log(NfitFeed[Icomp,Ifeed,]);
+    for (Ibreed in 1:Nbreed) for (Iyr in 1:(Nyr+1)) LogNb[Icomp,Ibreed,Iyr] <- log(NfitBreed[Icomp,Ibreed,Iyr]);
+    for (Ifeed in 1:Nfeed)  for (Iyr in 1:(Nyr+1)) LogNf[Icomp,Ifeed,Iyr] = log(NfitFeed[Icomp,Ifeed,Iyr]);
+    for (Iyr in 1:(Nyr+1)) { TotalNT <- sum(NfitBreed[Icomp,,Iyr]); LogNT[Icomp,Iyr] = log(TotalNT); }
   }
+  
   # =================================================================================================================================
   # Likelihood
   # =================================================================================================================================
@@ -508,61 +509,81 @@ f <- function(parms,dat)
   LikeCompSurv <- rep(0,NsurveyData); 
   LikeMixComp <- rep(0,NmixData);
   LogLike2a <- rep(0,2); LogLike2b <- rep(0,2)
-  PredSurv <- rep(0,NsurveyData); 
-  SurveySD <- rep(0,NsurveyData) 
-  Qest <- rep(0,NsurveySeries)
+  PredSurv <- rep(0,NsurveyData); SurveySD <- rep(0,NsurveyData); Qest <- rep(0,NsurveySeries)
   PredMixOut <- array(0,dim=c(2,Nbreed,Nfeed))
   PredMix <- rep(0,NmixData)
   ObsMixPropI <- matrix(0,nrow=NmixData,ncol=4); # Mixing observations (integers)
-  ObsMixProp <- matrix(0,nrow=NmixData,ncol=2); # Mixing Observations (reals) 
- 
-  # Survey data likelihood
+  ObsMixProp <- matrix(0,nrow=NmixData,ncol=2); # Mixing Observations (reals)
+  
+  # Survey data likelihood (Absolute abundance estimates) [Eqn B.1]
   for (Iclass in 1:NsurveySeries)
   {
-    ndat <- 0.0; logq <- 0.0;
-    for (Isurv in 1:NsurveyData)
-      if (SurveyI[Isurv,5] == Iclass)
-      {
-        Pred <- 0.0
-        for (Iyr in SurveyI[Isurv,1]:SurveyI[Isurv,2])
+    if (SurveySeries[Iclass]==1)
+    {
+      for (Isurv in 1:NsurveyData)
+        if (SurveyI[Isurv,5] == Iclass)
         {
-          Icomp <- SurveyI[Isurv,4]
-          if (Icomp>3) Icomp <- 3;
-          if (SurveyI[Isurv,3]==1) for (Ibreed in 1:Nbreed) Pred <- Pred + NfitBreed[Icomp,Ibreed,Iyr];
-          if (SurveyI[Isurv,3]==2) Pred <- Pred + NfitBreed[Icomp,SurveyI[Isurv,4],Iyr];
-          if (SurveyI[Isurv,3]==3) Pred <- Pred + NfitFeed[Icomp,SurveyI[Isurv,4],Iyr];
+          Pred <- 0;
+          for (Iyr in SurveyI[Isurv,1]:SurveyI[Isurv,2])
+          {
+            Icomp <- SurveyI[Isurv,8]+1
+            # Icomp <- SurveyI[Isurv,8]
+            if (SurveyI[Isurv,3]==1) for (Ibreed in 1:Nbreed) Pred <- Pred + NfitBreed[Icomp,Ibreed,Iyr];
+            if (SurveyI[Isurv,3]==2) Pred <- Pred + NfitBreed[Icomp,SurveyI[Isurv,4],Iyr];
+            if (SurveyI[Isurv,3]==3) Pred <- Pred + NfitFeed[Icomp,SurveyI[Isurv,4],Iyr];
+          }
+          Pred <- Pred / (SurveyI[Isurv,2]-SurveyI[Isurv,1]+1);
+          PredSurv[Isurv] <- Pred;
+          SD2 <- SurveyR[Isurv,2]*SurveyR[Isurv,2];
+          if (SurveyI[Isurv,7]>0) SD2 <- SD2 + AddV[SurveyI[Isurv,7]];
+          SurveySD[Isurv] <- sqrt(SD2);
+          LikeCompSurv[Isurv] <- -dnorm(log(SurveyR[Isurv,1]), log(PredSurv[Isurv]), sqrt(SD2), log=T);
+          if (SurveyI[Isurv,3]==1) LikeCompSurv[Isurv] <- LikeCompSurv[Isurv] * WghtTotal;
+          if (SurveyI[Isurv,6]==1) LogLike1 <- LogLike1 + LikeCompSurv[Isurv];
         }
-        Pred = Pred / (SurveyI[Isurv,2]-SurveyI[Isurv,1]+1);
-        PredSurv[Isurv] <- Pred;
-        SD2 = SurveyR[Isurv,2]^2;
-        if (SurveyI[Isurv,7]>0) SD2 <- SD2 + AddV[SurveyI[Isurv,7]];
-        if (SurveyI[Isurv,6]==1) ndat <- ndat + 1.0/SD2;
-        if (SurveyI[Isurv,6]==1) logq <- logq + log(SurveyR[Isurv,1]/Pred)/SD2;
-      }
-    q <- exp(logq/ndat);
-    Qest[Iclass] <- q;
-    # Actual likelihood (Eqn C.2)
-    for (Isurv in 1:NsurveyData)
-      if (SurveyI[Isurv,5] == Iclass)
-      {
-        PredSurv[Isurv] <- q*PredSurv[Isurv];
-        SD2 <- SurveyR[Isurv,2]^2;
-        if (SurveyI[Isurv,7]>0) SD2 <- SD2 + AddV[SurveyI[Isurv,7]];
-        SurveySD[Isurv] <- sqrt(SD2);
-        LikeCompSurv[Isurv] <- -dnorm(log(SurveyR[Isurv,1]), log(PredSurv[Isurv]), sqrt(SD2), log=T);
-        if (SurveyI[Isurv,6]==1) LogLike1 <- LogLike1 + LikeCompSurv[Isurv];
-      }
+    } # Absolute indices
+  
+    # Survey data likelihood (Relative abundance estimates)
+    if (SurveySeries[Iclass]==2)
+    {
+      # Find ML estimare of survey Q
+      logq = 0; ndat = 0;
+      for (Isurv in 1:NsurveyData)
+        if (SurveyI[Isurv,5]==Iclass)
+        {
+          Pred = 0;
+          for (Iyr in SurveyI[Isurv,1]:SurveyI[Isurv,2])
+          {
+            Icomp <- SurveyI[Isurv,8]+1
+            if (SurveyI[Isurv,3]==1) for (Ibreed in 1:Nbreed) Pred <- Pred + NfitBreed[Icomp,Ibreed,Iyr];
+            if (SurveyI[Isurv,3]==2) Pred <- Pred + NfitBreed[Icomp,SurveyI[Isurv,4],Iyr];
+            if (SurveyI[Isurv,3]==3) Pred <- Pred + NfitFeed[Icomp,SurveyI[Isurv,4],Iyr];
+          }
+          Pred = Pred / (SurveyI[Isurv,2]-SurveyI[Isurv,1]+1);
+          PredSurv[Isurv] <- Pred;
+          SD2 = SurveyR[Isurv,2]^2;
+          if (SurveyI[Isurv,7]>0) SD2 <- SD2 + AddV[SurveyI[Isurv,7]];
+          if (SurveyI[Isurv,6]==1) ndat <- ndat + 1.0/SD2;
+          if (SurveyI[Isurv,6]==1) logq <- logq + log(SurveyR[Isurv,1]/Pred)/SD2;
+        }
+      q <- exp(logq/ndat);
+      Qest[Iclass] <- q;
+      # Actual likelihood (Eqn C.2)
+      for (Isurv in 1:NsurveyData)
+        if (SurveyI[Isurv,5] == Iclass)
+        {
+          PredSurv[Isurv] <- q*PredSurv[Isurv];
+          SD2 <- SurveyR[Isurv,2]^2;
+          if (SurveyI[Isurv,7]>0) SD2 <- SD2 + AddV[SurveyI[Isurv,7]];
+          SurveySD[Isurv] <- sqrt(SD2);
+          LikeCompSurv[Isurv] <- -dnorm(log(SurveyR[Isurv,1]), log(PredSurv[Isurv]), sqrt(SD2), log=T);
+          if (SurveyI[Isurv,6]==1) LogLike1 <- LogLike1 + LikeCompSurv[Isurv];
+        }
+    } 
   } # Relative indices
 
   # Mixing proportions (Breeding to Feeding) (Eqn C.3)
   Icnt <- 1; Jcnt <- 1;
-  PredMixOut <- array(0,dim=c(2,Nbreed,Nfeed))
-  ObsMixPropI <- matrix(0,nrow=1000,ncol=4)
-  ObsMixProp <- matrix(0,nrow=1000,ncol=2)
-  PredMix <- rep(0,1000)
-  LogLike2a <- rep(0, Nbreed)
-  LogLike2b <- rep(0, Nfeed)
-  LikeMixComp <- rep(0,1000)
   for (IdataS in 1:2)
   {
     for (Ibreed in 1:Nbreed)
